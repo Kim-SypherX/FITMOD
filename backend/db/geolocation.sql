@@ -1,0 +1,3 @@
+ALTER TABLE tailleur 
+ADD COLUMN latitude DECIMAL(10,8) DEFAULT NULL AFTER quartier,
+ADD COLUMN longitude DECIMAL(11,8) DEFAULT NULL AFTER latitude;

@@ -9,7 +9,7 @@ import MesuresCapture from './components/MesuresCapture';
 import CabineEssayage from './components/CabineEssayage';
 import CataloguePage from './components/CataloguePage';
 import CommandePage from './components/CommandePage';
-import MessageriePage from './components/MessageriePage';
+import ChatPage from './components/ChatPage';
 import FavorisPage from './components/FavorisPage';
 import AdminPage from './components/AdminPage';
 import TailleurDashboard from './components/TailleurDashboard';
@@ -53,13 +53,13 @@ function AppContent() {
       case 'commandes':
         return <CommandePage commandeContext={pageContext} onNavigate={(page, ctx) => navigate(page, ctx)} />;
       case 'messagerie':
-        return <MessageriePage messageContext={pageContext} />;
+        return <ChatPage chatContext={pageContext} onNavigate={(page, ctx) => navigate(page, ctx)} />;
       case 'favoris':
         return <FavorisPage onNavigate={(page, ctx) => navigate(page, ctx)} />;
       case 'admin':
         return <AdminPage />;
       case 'atelier':
-        return <TailleurDashboard />;
+        return <TailleurDashboard onNavigate={(page, ctx) => navigate(page, ctx)} />;
       default:
         return <CataloguePage onNavigate={(page, ctx) => navigate(page, ctx)} />;
     }

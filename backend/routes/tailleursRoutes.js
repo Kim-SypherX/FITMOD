@@ -9,14 +9,21 @@ const upload = require('../upload');
 // GET /api/tailleurs — Liste avec filtres
 router.get('/', async (req, res) => {
     try {
-        const { ville, specialite, note_min, search } = req.query;
+        const { ville, specialite, note_min, search, latitude, longitude } = req.query;
+        const params = [];
+        let selectDistance = '';
+
+        if (latitude && longitude) {
+            selectDistance = `, (6371 * acos(cos(radians(?)) * cos(radians(t.latitude)) * cos(radians(t.longitude) - radians(?)) + sin(radians(?)) * sin(radians(t.latitude)))) AS distance`;
+            params.push(latitude, longitude, latitude);
+        }
+
         let sql = `
-      SELECT t.*, u.nom, u.prenom, u.telephone, u.ville, u.email
+      SELECT t.*, u.nom, u.prenom, u.telephone, u.ville, u.email${selectDistance}
       FROM tailleur t
       JOIN utilisateur u ON t.utilisateur_id = u.id
       WHERE t.statut = 'actif' AND u.actif = 1
     `;
-        const params = [];
 
         if (ville) { sql += ' AND u.ville = ?'; params.push(ville); }
         if (specialite) { sql += ' AND t.specialites LIKE ?'; params.push(`%${specialite}%`); }
@@ -27,7 +34,11 @@ router.get('/', async (req, res) => {
             params.push(q, q, q);
         }
 
-        sql += ' ORDER BY t.note_moyenne DESC';
+        if (latitude && longitude) {
+            sql += ' ORDER BY distance ASC';
+        } else {
+            sql += ' ORDER BY t.note_moyenne DESC';
+        }
 
         const [rows] = await pool.query(sql, params);
         res.json(rows);
@@ -80,10 +91,10 @@ router.get('/:id', async (req, res) => {
 // PUT /api/tailleurs/:id — Modifier profil
 router.put('/:id', async (req, res) => {
     try {
-        const { nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut } = req.body;
+        const { nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude, longitude } = req.body;
         await pool.query(
-            'UPDATE tailleur SET nom_atelier=?, adresse=?, quartier=?, specialites=?, tarif_min=?, delai_moyen=?, statut=? WHERE id=?',
-            [nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, req.params.id]
+            'UPDATE tailleur SET nom_atelier=?, adresse=?, quartier=?, specialites=?, tarif_min=?, delai_moyen=?, statut=?, latitude=?, longitude=? WHERE id=?',
+            [nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude || null, longitude || null, req.params.id]
         );
         res.json({ success: true });
     } catch (err) {

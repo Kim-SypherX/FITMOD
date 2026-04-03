@@ -2,6 +2,7 @@
  * FITMOD — CataloguePage (Real API)
  */
 import React, { useState, useEffect } from 'react';
+import { FiMessageSquare } from 'react-icons/fi';
 import api from '../utils/api';
 import '../styles/Pages.css';
 
@@ -17,6 +18,9 @@ export default function CataloguePage({ onNavigate }) {
     const [filterVille, setFilterVille] = useState('');
     const [filterSpec, setFilterSpec] = useState('');
     const [filterBudget, setFilterBudget] = useState('');
+    const [userLat, setUserLat] = useState(null);
+    const [userLng, setUserLng] = useState(null);
+    const [isLocating, setIsLocating] = useState(false);
 
     const [selectedTailleur, setSelectedTailleur] = useState(null);
     const [selectedModele, setSelectedModele] = useState(null);
@@ -25,12 +29,35 @@ export default function CataloguePage({ onNavigate }) {
     // Charger les tailleurs et tous les modèles
     useEffect(() => {
         loadData();
-    }, [search, filterVille, filterSpec, filterBudget]);
+    }, [search, filterVille, filterSpec, filterBudget, userLat, userLng]);
+
+    const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Géolocalisation non supportée par votre navigateur.");
+            return;
+        }
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setUserLat(position.coords.latitude);
+                setUserLng(position.coords.longitude);
+                setIsLocating(false);
+            },
+            (err) => {
+                console.error("Erreur GPS", err);
+                alert("Impossible d'obtenir votre position.");
+                setIsLocating(false);
+            }
+        );
+    };
 
     const loadData = async () => {
         setLoading(true);
         try {
             let tQuery = `?ville=${filterVille}&specialite=${filterSpec}&search=${search}`;
+            if (userLat && userLng) {
+                tQuery += `&latitude=${userLat}&longitude=${userLng}`;
+            }
             let mQuery = `?prix_max=${filterBudget}&search=${search}`;
 
             const [tData, mData] = await Promise.all([
@@ -84,12 +111,19 @@ export default function CataloguePage({ onNavigate }) {
                         </div>
                     </div>
 
-                    <div className="modele-detail-actions" style={{ display: 'flex', gap: '12px' }}>
+                    <div className="modele-detail-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <button className="page-btn page-btn-primary" onClick={() => onNavigate?.('commandes', {
                             modele: selectedModele,
                             tailleur: { id: selectedModele.tailleur_id, nom_atelier: selectedModele.nom_atelier }
                         })}>
                             Commander
+                        </button>
+                        <button className="page-btn page-btn-secondary" onClick={() => onNavigate?.('messagerie', {
+                            partnerId: selectedModele.tailleur_id, // we might need to get this 
+                            partnerName: selectedModele.nom_atelier
+                        })} style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-main)', border: '3px solid var(--color-border)', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', padding: '12px 24px', boxShadow: '4px 4px 0px var(--color-border)' }}>
+                            <FiMessageSquare style={{ marginRight: '8px' }} />
+                            Contacter
                         </button>
                         <button className="page-btn page-btn-secondary" onClick={() => onNavigate?.('cabine')} style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-main)', border: '3px solid var(--color-border)', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', padding: '12px 24px', boxShadow: '4px 4px 0px var(--color-border)' }}>
                             Essayer en Cabine
@@ -118,6 +152,14 @@ export default function CataloguePage({ onNavigate }) {
                             <div className="tailleur-meta" style={{ display: 'flex', gap: '12px', fontSize: '14px', fontWeight: 'bold' }}>
                                 <span>Note: {t.note_moyenne} / 5</span>
                                 <span>{t.telephone}</span>
+                            </div>
+                            <div style={{ marginTop: '16px' }}>
+                                <button className="page-btn page-btn-primary" onClick={() => onNavigate?.('messagerie', {
+                                    partnerId: t.utilisateur_id,
+                                    partnerName: t.nom_atelier
+                                })} style={{ padding: '8px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FiMessageSquare /> Contacter le tailleur
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -157,7 +199,7 @@ export default function CataloguePage({ onNavigate }) {
                 <p>Trouvez votre tailleur et choisissez votre modèle.</p>
             </div>
 
-            <div className="filters-bar" style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
+            <div className="filters-bar" style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <input className="filter-search" placeholder="Rechercher"
                     value={search} onChange={e => setSearch(e.target.value)} />
                 <select className="filter-select" value={filterVille} onChange={e => setFilterVille(e.target.value)}>
@@ -175,6 +217,21 @@ export default function CataloguePage({ onNavigate }) {
                     <option value="50000">≤ 50.000</option>
                     <option value="100000">≤ 100.000</option>
                 </select>
+                <button
+                    onClick={handleGetLocation}
+                    disabled={isLocating}
+                    style={{ background: (userLat && userLng) ? 'var(--color-accent-mustard)' : 'var(--color-bg-card)', border: '2px solid var(--color-border)', borderRadius: '12px', padding: '10px 16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: '0.2s', color: 'var(--color-text-main)' }}
+                >
+                    {isLocating ? '⏳ Recherche...' : '📍 Autour de moi'}
+                </button>
+                {(userLat && userLng) && (
+                    <button
+                        onClick={() => { setUserLat(null); setUserLng(null); }}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                    >
+                        ✕ Annuler GPS
+                    </button>
+                )}
             </div>
 
             {loading ? (
@@ -191,7 +248,14 @@ export default function CataloguePage({ onNavigate }) {
                                     </div>
                                     <div>
                                         <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '20px', margin: '0' }}>{t.nom_atelier}</h4>
-                                        <span className="tailleur-location" style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{t.ville}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                            <span className="tailleur-location" style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{t.ville}</span>
+                                            {t.distance != null && (
+                                                <span style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>
+                                                    📍 {Number(t.distance).toFixed(1)} km
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="tailleur-card-tags" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>

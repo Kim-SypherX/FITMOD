@@ -435,8 +435,28 @@ function ProfilTab({ tailleurData, tailleurId, onUpdate }) {
     const [specialites, setSpecialites] = useState(tailleurData?.specialites || '');
     const [tarifMin, setTarifMin] = useState(tailleurData?.tarif_min || '');
     const [delaiMoyen, setDelaiMoyen] = useState(tailleurData?.delai_moyen || '');
+    const [latitude, setLatitude] = useState(tailleurData?.latitude || null);
+    const [longitude, setLongitude] = useState(tailleurData?.longitude || null);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState('');
+
+    const handleCaptureLocation = () => {
+        if (!navigator.geolocation) {
+            alert("La géolocalisation n'est pas supportée par votre navigateur.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setLatitude(position.coords.latitude);
+                setLongitude(position.coords.longitude);
+                setStatus('📍 Position capturée ! Pensez à sauvegarder.');
+            },
+            (error) => {
+                console.error("Erreur GPS:", error);
+                alert("Impossible de récupérer la position. Vérifiez vos permissions.");
+            }
+        );
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -444,7 +464,8 @@ function ProfilTab({ tailleurData, tailleurId, onUpdate }) {
         try {
             await api.put(`/tailleurs/${tailleurId}`, {
                 nom_atelier: nomAtelier, adresse, quartier, specialites,
-                tarif_min: tarifMin, delai_moyen: delaiMoyen, statut: 'actif'
+                tarif_min: tarifMin, delai_moyen: delaiMoyen, statut: 'actif',
+                latitude, longitude
             });
             setStatus('✅ Profil mis à jour !');
             onUpdate();
@@ -461,12 +482,27 @@ function ProfilTab({ tailleurData, tailleurId, onUpdate }) {
                 <InputField label="Nom de l'atelier" value={nomAtelier} onChange={setNomAtelier} placeholder="Ex: Atelier Kôrô" />
                 <InputField label="Adresse" value={adresse} onChange={setAdresse} placeholder="Rue / quartier principal" />
                 <InputField label="Quartier" value={quartier} onChange={setQuartier} placeholder="Ex: Ouaga 2000" />
+
+                <div style={{ padding: '16px', background: 'rgba(139,94,60,0.05)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <label style={labelStyle}>Géolocalisation</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={handleCaptureLocation} className="page-btn page-btn-secondary" style={{ flexShrink: 0, padding: '8px 16px', fontSize: '13px' }}>
+                            📍 Marquer la position actuelle
+                        </button>
+                        {(latitude && longitude) ? (
+                            <span style={{ fontSize: '13px', color: '#16a34a', fontWeight: '600' }}>✓ Coordonnées GPS enregistrées</span>
+                        ) : (
+                            <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Aucune coordonnée GPS</span>
+                        )}
+                    </div>
+                </div>
+
                 <InputField label="Spécialités" value={specialites} onChange={setSpecialites} placeholder="Boubou, Robe, Costume" />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <InputField label="Tarif minimum (FCFA)" value={tarifMin} onChange={setTarifMin} type="number" placeholder="5000" />
                     <InputField label="Délai moyen" value={delaiMoyen} onChange={setDelaiMoyen} placeholder="3-5 jours" />
                 </div>
-                {status && <div style={{ padding: '10px', borderRadius: '12px', background: status.startsWith('✅') ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', fontSize: '14px', fontWeight: '600', textAlign: 'center' }}>{status}</div>}
+                {status && <div style={{ padding: '10px', borderRadius: '12px', background: status.startsWith('✅') || status.startsWith('📍') ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', fontSize: '14px', fontWeight: '600', textAlign: 'center' }}>{status}</div>}
                 <button type="submit" className="page-btn page-btn-primary" disabled={saving}>
                     {saving ? '⏳ Sauvegarde...' : 'Sauvegarder le Profil'}
                 </button>
