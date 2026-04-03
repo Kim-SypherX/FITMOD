@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Fonts */
+  --font-body: 'Outfit', 'Inter', sans-serif;
+  --font-heading: 'Space Grotesk', 'Outfit', sans-serif;
+
+  /* ═══ White + Chocolate Clair Palette ═══ */
+  --color-bg-base: #ffffff;
+  --color-bg-alt: #faf6f1;
+  --color-bg-card: rgba(255, 255, 255, 0.65);
+  --color-bg-card-solid: #ffffff;
+  --color-text-main: #2d1810;
+  --color-text-muted: #8b7060;
+
+  /* Chocolate accents */
+  --color-accent-choco: #8B5E3C;
+  --color-accent-caramel: #C68B59;
+  --color-accent-gold: #D4A76A;
+  --color-accent-cream: #F5E6D3;
+
+  /* Neon glow colors */
+  --neon-choco: rgba(139, 94, 60, 0.6);
+  --neon-gold: rgba(212, 167, 106, 0.5);
+  --neon-caramel: rgba(198, 139, 89, 0.45);
+
+  /* Glass & borders */
+  --glass-border: rgba(139, 94, 60, 0.12);
+  --glass-shadow: 0 8px 32px rgba(139, 94, 60, 0.08);
+  --glass-blur: blur(20px);
+
+  /* 3D & animation */
+  --transition-smooth: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-bounce: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg-base);
+  color: var(--color-text-main);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══ App Container ═══ */
+.fitmod-app {
+  position: relative;
+  min-height: 100vh;
+  background: var(--color-bg-base);
+  overflow-x: hidden;
+}
+
+/* Animated background orbs (subtle chocolate/cream) */
+.fitmod-app::before {
+  content: '';
+  position: fixed;
+  top: -20vh;
+  right: -15vw;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, var(--color-accent-cream) 0%, transparent 70%);
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+  animation: floatOrb1 20s ease-in-out infinite;
+}
+
+.fitmod-app::after {
+  content: '';
+  position: fixed;
+  bottom: -25vh;
+  left: -15vw;
+  width: 60vw;
+  height: 55vw;
+  background: radial-gradient(circle, rgba(212, 167, 106, 0.15) 0%, transparent 70%);
+  opacity: 0.6;
+  z-index: 0;
+  pointer-events: none;
+  animation: floatOrb2 25s ease-in-out infinite;
+}
+
+/* ═══ Keyframes — Background Orbs ═══ */
+@keyframes floatOrb1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(-5vw, 8vh) scale(1.1);
+  }
+
+  66% {
+    transform: translate(5vw, -5vh) scale(0.95);
+  }
+}
+
+@keyframes floatOrb2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(8vw, -10vh) scale(1.08);
+  }
+}
+
+/* ═══ Keyframes — 3D Card Hover ═══ */
+@keyframes card3DEnter {
+  0% {
+    transform: perspective(800px) rotateX(0) rotateY(0) translateZ(0);
+  }
+
+  100% {
+    transform: perspective(800px) rotateX(2deg) rotateY(-3deg) translateZ(30px);
+  }
+}
+
+/* ═══ Keyframes — Neon Pulse ═══ */
+@keyframes neonPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px var(--neon-choco), 0 0 20px var(--neon-gold);
+  }
+
+  50% {
+    box-shadow: 0 0 10px var(--neon-choco), 0 0 40px var(--neon-gold), 0 0 60px var(--neon-caramel);
+  }
+}
+
+@keyframes neonPulseText {
+
+  0%,
+  100% {
+    text-shadow: 0 0 5px var(--neon-choco), 0 0 15px var(--neon-gold);
+  }
+
+  50% {
+    text-shadow: 0 0 10px var(--neon-choco), 0 0 30px var(--neon-gold), 0 0 50px var(--neon-caramel);
+  }
+}
+
+/* ═══ Keyframes — Float ═══ */
+@keyframes floatUp {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ═══ Keyframes — Fade Slide In ═══ */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══ Keyframes — Shimmer ═══ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ═══ Keyframes — Scale In ═══ */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ═══ Utility: Neon glow on hover ═══ */
+.neon-hover:hover {
+  box-shadow: 0 0 15px var(--neon-choco), 0 0 30px var(--neon-gold) !important;
+}
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-alt);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent-caramel);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-choco);
+}
