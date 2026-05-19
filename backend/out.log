@@ -1,0 +1,87 @@
+✅ FITMOD API (MySQL + Socket.IO) démarrée sur http://localhost:3001
+🔌 Socket connecté: H-j10FsL_Bm401vyAAAB
+👤 H-j10FsL_Bm401vyAAAB (User 1) a rejoint sa room personnelle
+VTON queue joined, event_id: 233fcedac53d4e5fb537ee45a12b7077
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: process_completed
+Proxy predict error: IA erreur interne: {"msg":"process_completed","event_id":"233fcedac53d4e5fb537ee45a12b7077","output":{"error":null},"success":false}
+VTON queue joined, event_id: 8f6b888cbc354668800744d18f41ee04
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/a7364747c22678295d4eb0a063ac707a20d89d2518ac0a392eff1691fb2fb920/image...
+VTON queue joined, event_id: 7271ee98a09c4bbfa62d9c8331b5a8b4
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/7b0c9e34d48b90da898aba930b192dc9c0bcf918d868da0067600710561089c3/image...
+VTON queue joined, event_id: b6c896cfb3814942aa2e2a0e4d20eb11
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/bb5c041cc809a37a2e449383d63140a82ca1bb070679e43192e18cf82d568785/image...
+VTON queue joined, event_id: 3c1abfb923724304a1a0d6471892b48d
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/3decea596bb756b88d6b2c46ac4ebb7a0181b5aaef4b126b8e573fb3e618140d/image...
+VTON queue joined, event_id: 9e396f2df1004f79ad64abe26ad21a69
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/711400eeabde726f2f542ae9df0d98b71ca82383bceed22abde1eda01bd5b421/image...
+🔌 Socket connecté: s8s9rDjwWu_mC8bWAAAE
+🔌 Socket connecté: yNWuSkocpPvLdLMOAAAF
+👤 s8s9rDjwWu_mC8bWAAAE (User 1) a rejoint sa room personnelle
+👤 yNWuSkocpPvLdLMOAAAF (User 1) a rejoint sa room personnelle
+❌ Socket déconnecté: yNWuSkocpPvLdLMOAAAF
+❌ Socket déconnecté: s8s9rDjwWu_mC8bWAAAE
+❌ Socket déconnecté: H-j10FsL_Bm401vyAAAB
+VTON queue joined, event_id: f994e72248a64ca885c617ed4e7f7ef8
+VTON SSE msg: estimation
+VTON SSE msg: process_starts
+VTON SSE msg: heartbeat
+VTON SSE msg: process_completed
+VTON final result: {"data":[{"path":"/tmp/gradio/147dd44e56fa106cd1277a5a575baf1c63541f175147d54730140535ba3332b3/image...
+🔌 Socket connecté: geU0HQ9aXI03VjHqAAAI
+🔌 Socket connecté: GHVPIF6JNp7zgtX6AAAJ
+👤 geU0HQ9aXI03VjHqAAAI (User 2) a rejoint sa room personnelle
+👤 GHVPIF6JNp7zgtX6AAAJ (User 2) a rejoint sa room personnelle
+❌ Socket déconnecté: GHVPIF6JNp7zgtX6AAAJ
+❌ Socket déconnecté: geU0HQ9aXI03VjHqAAAI
+🔌 Socket connecté: PzZP36Fz5VYps1YEAAAM
+🔌 Socket connecté: uJGzQKupM4T2xioAAAAN
+👤 uJGzQKupM4T2xioAAAAN (User 1) a rejoint sa room personnelle
+👤 PzZP36Fz5VYps1YEAAAM (User 1) a rejoint sa room personnelle
+❌ Socket déconnecté: uJGzQKupM4T2xioAAAAN
+🔌 Socket connecté: -snu1mwV_n4bhbXLAAAQ
+👤 -snu1mwV_n4bhbXLAAAQ (User 1) a rejoint sa room personnelle
+🔌 Socket connecté: UUWsHinY8DVU-eR3AAAR
+👤 UUWsHinY8DVU-eR3AAAR (User 1) a rejoint sa room personnelle
+👥 UUWsHinY8DVU-eR3AAAR a rejoint chat_1_2
+❌ Socket déconnecté: UUWsHinY8DVU-eR3AAAR
+🔌 Socket connecté: 4nY9IjX8SsUu0QVNAAAU
+🔌 Socket connecté: KiuOBITDa4IxZ5XwAAAV
+👤 4nY9IjX8SsUu0QVNAAAU (User 1) a rejoint sa room personnelle
+👤 KiuOBITDa4IxZ5XwAAAV (User 1) a rejoint sa room personnelle
+👥 KiuOBITDa4IxZ5XwAAAV a rejoint chat_1_2
+❌ Socket déconnecté: KiuOBITDa4IxZ5XwAAAV
+❌ Socket déconnecté: -snu1mwV_n4bhbXLAAAQ
+❌ Socket déconnecté: PzZP36Fz5VYps1YEAAAM
+❌ Socket déconnecté: 4nY9IjX8SsUu0QVNAAAU
+✅ [Mailer] E-mail envoyé à yempounti@gmail.com avec succès. (MessageId: <b0179085-1014-0212-9b78-d4a08f4c1af9@ethereal.email>)
+👁️  [PREVIEW EMAIL] Cliquez ici pour voir l'email : https://ethereal.email/message/agZ98ldwKRIbRtH1aguc1ejMivcccmD6AAAABcekrWn2eLihsM9bdWqzboM
+🔌 Socket connecté: A0JZ8JllimYkRUy8AAAY
+🔌 Socket connecté: Jx9s1TAAbVMH6LklAAAZ
+👤 A0JZ8JllimYkRUy8AAAY (User 7) a rejoint sa room personnelle
+👤 Jx9s1TAAbVMH6LklAAAZ (User 7) a rejoint sa room personnelle
+❌ Socket déconnecté: Jx9s1TAAbVMH6LklAAAZ

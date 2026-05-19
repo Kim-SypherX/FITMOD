@@ -91,10 +91,12 @@ router.get('/:id', async (req, res) => {
 // PUT /api/tailleurs/:id — Modifier profil
 router.put('/:id', async (req, res) => {
     try {
-        const { nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude, longitude } = req.body;
+        const { nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude, longitude, mode_paiement } = req.body;
         await pool.query(
-            'UPDATE tailleur SET nom_atelier=?, adresse=?, quartier=?, specialites=?, tarif_min=?, delai_moyen=?, statut=?, latitude=?, longitude=? WHERE id=?',
-            [nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude || null, longitude || null, req.params.id]
+            `UPDATE tailleur SET nom_atelier=?, adresse=?, quartier=?, specialites=?, tarif_min=?, delai_moyen=?, statut=?, latitude=?, longitude=?${mode_paiement ? ', mode_paiement=?' : ''} WHERE id=?`,
+            mode_paiement
+                ? [nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude || null, longitude || null, mode_paiement, req.params.id]
+                : [nom_atelier, adresse, quartier, specialites, tarif_min, delai_moyen, statut, latitude || null, longitude || null, req.params.id]
         );
         res.json({ success: true });
     } catch (err) {
@@ -206,7 +208,8 @@ router.get('/modeles/all', async (req, res) => {
     try {
         const { type_tenue, prix_max, search } = req.query;
         let sql = `
-      SELECT m.*, t.nom_atelier, u.ville
+      SELECT m.*, t.nom_atelier, u.ville, t.utilisateur_id AS tailleur_utilisateur_id,
+             (SELECT COUNT(*) FROM favori f WHERE f.modele_id = m.id) AS favoris_count
       FROM modele m
       JOIN tailleur t ON m.tailleur_id = t.id
       JOIN utilisateur u ON t.utilisateur_id = u.id

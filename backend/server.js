@@ -18,6 +18,9 @@ const messageRoutes = require('./routes/messageRoutes');
 const clientProfilRoutes = require('./routes/clientProfilRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const paiementRoutes = require('./routes/paiementRoutes');
+const trellisRoutes = require('./routes/trellisRoutes');
+const vtonProxyRoutes = require('./routes/vtonProxyRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,6 +55,9 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/client-profil', clientProfilRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/paiement', paiementRoutes);
+app.use('/api/trellis', trellisRoutes);
+app.use('/api/vton', vtonProxyRoutes);
 
 // --- Route de santé ---
 app.get('/api/health', (req, res) => {
@@ -61,6 +67,12 @@ app.get('/api/health', (req, res) => {
 // --- Socket.IO Events ---
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connecté: ${socket.id}`);
+
+  // Notification globale utilisateur
+  socket.on('register_user', (userId) => {
+    socket.join(`user_${parseInt(userId)}`);
+    console.log(`👤 ${socket.id} (User ${userId}) a rejoint sa room personnelle`);
+  });
 
   // Rejoindre une room de conversation (paire user1_user2)
   socket.on('join_conversation', ({ userId, partnerId }) => {

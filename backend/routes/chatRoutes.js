@@ -62,7 +62,6 @@ router.get('/conversations/:userId', async (req, res) => {
                      WHERE m2.destinataire_id = ? 
                      AND m2.expediteur_id = CASE WHEN m.expediteur_id = ? THEN m.destinataire_id ELSE m.expediteur_id END
                      AND m2.lu = 0
-                     AND m2.commande_id IS NULL
                     ) as non_lus,
                     ROW_NUMBER() OVER (
                         PARTITION BY LEAST(m.expediteur_id, m.destinataire_id), GREATEST(m.expediteur_id, m.destinataire_id)
@@ -108,7 +107,7 @@ router.get('/messages/:userId/:partnerId', async (req, res) => {
         // Marquer comme lus les messages reçus
         await pool.query(`
             UPDATE message SET lu = 1
-            WHERE expediteur_id = ? AND destinataire_id = ? AND lu = 0 AND commande_id IS NULL
+            WHERE expediteur_id = ? AND destinataire_id = ? AND lu = 0
         `, [partnerId, userId]);
 
         res.json(rows);
@@ -143,7 +142,8 @@ router.post('/messages', async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             const room = [parseInt(expediteur_id), parseInt(destinataire_id)].sort().join('_');
-            io.to(`chat_${room}`).emit('new_message', msg);
+            // On notifie la discussion ouverte + la room globale du destinataire et de l'expéditeur
+            io.to([`chat_${room}`, `user_${destinataire_id}`, `user_${expediteur_id}`]).emit('new_message', msg);
         }
 
         res.status(201).json(msg);
@@ -180,7 +180,7 @@ router.post('/upload-audio', audioUpload.single('audio'), async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             const room = [parseInt(expediteur_id), parseInt(destinataire_id)].sort().join('_');
-            io.to(`chat_${room}`).emit('new_message', msg);
+            io.to([`chat_${room}`, `user_${destinataire_id}`, `user_${expediteur_id}`]).emit('new_message', msg);
         }
 
         res.status(201).json(msg);
@@ -196,7 +196,7 @@ router.patch('/messages/read', async (req, res) => {
         const { expediteur_id, destinataire_id } = req.body;
         await pool.query(`
             UPDATE message SET lu = 1
-            WHERE expediteur_id = ? AND destinataire_id = ? AND lu = 0 AND commande_id IS NULL
+            WHERE expediteur_id = ? AND destinataire_id = ? AND lu = 0
         `, [expediteur_id, destinataire_id]);
         res.json({ success: true });
     } catch (err) {
