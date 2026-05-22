@@ -93,7 +93,7 @@
 
 .conv-top h4 {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     font-family: var(--font-heading);
     white-space: nowrap;
     overflow: hidden;
@@ -106,7 +106,7 @@
 }
 
 .conv-preview {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--color-text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -193,7 +193,7 @@
 
 .chat-header-info h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     font-family: var(--font-heading);
 }
 
@@ -216,7 +216,7 @@
     backdrop-filter: blur(10px);
     padding: 6px 14px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--color-text-muted);
     box-shadow: 0 2px 8px rgba(139, 94, 60, 0.05);
@@ -268,8 +268,8 @@
 
 .bubble-text {
     margin: 0;
-    font-size: 14.5px;
-    line-height: 1.4;
+    font-size: 16px;
+    line-height: 1.5;
     word-break: break-word;
 }
 
@@ -277,7 +277,7 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    font-size: 10px;
+    font-size: 12px;
     color: rgba(139, 94, 60, 0.6);
     margin-top: 4px;
     gap: 4px;
@@ -321,7 +321,7 @@
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     padding: 12px 20px;
-    font-size: 15px;
+    font-size: 16px;
     font-family: var(--font-body);
     outline: none;
     transition: var(--transition-smooth);

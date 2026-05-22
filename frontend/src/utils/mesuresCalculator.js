@@ -1,27 +1,24 @@
 /**
- * FITMOD — Calculateur de Mesures Corporelles (v4 — Calibré)
- * ===========================================================
+ * FITMOD — Calculateur de Mesures Corporelles (v5 — Recalibré Tailleur)
+ * =====================================================================
  * Convertit les landmarks MediaPipe Pose en mesures corporelles réelles (cm).
  *
- * CALIBRATION v4 — Basée sur des mesures réelles :
- * 
- * PROBLÈME IDENTIFIÉ :
- * Les landmarks MediaPipe sont positionnés sur les ARTICULATIONS SQUELETTIQUES
- * (glenohumeral joint, os iliaque), PAS sur la surface de la peau.
- * → Il faut des CORRECTIONS ADDITIVES (proportionnelles à la taille)
- *   pour compenser la différence os/surface.
- * → Puis des FACTEURS ELLIPTIQUES pour convertir une largeur 2D en tour 3D.
+ * CALIBRATION v5 — Basée sur comparaison directe avec fiche tailleur réelle :
  *
- * Données de calibration (sujet 1m80) :
- * | Mesure         | Appli v3 | Réel | Correction appliquée |
- * |----------------|----------|------|----------------------|
- * | Tour de cou    | 16.7     | 39   | facteur direct ×3.31 |
- * | Larg. épaules  | 34.9     | 44   | +10cm offset         |
- * | Tour poitrine  | 112.4    | 98   | offset + facteur 2.18|
- * | Tour hanches   | 71.4     | 78   | offset + facteur 2.57|
- * | Tour bras      | 23.3     | 26   | facteur direct ×0.98 |
- * | Long. manche   | 56.9     | 62   | ×1.09                |
- * | Hanche→cheville| 90       | 100  | ×1.11                |
+ * | Code | Mesure               | Tailleur | FITMOD v4 | Correction         |
+ * |------|----------------------|:--------:|:---------:|--------------------|
+ * | E    | Épaule (largeur)     | 48       | 45.2      | +OFFSET ×0.072     |
+ * | P    | Poitrine (tour)      | 100      | 98.5      | facteur 2.08       |
+ * | L    | Longueur habit       | 74       | 52.3      | nouvelle formule   |
+ * | CM   | Manche courte        | 30       | —         | AJOUTÉE            |
+ * | tM   | Tour de manche       | 40       | 23.5      | facteur 1.67       |
+ * | LM   | Manche longue        | 55       | 56.9      | facteur 1.054      |
+ * | L    | Longueur globale     | 121      | 152       | épaule→tibia       |
+ * | C    | Ceinture (tour)      | 82       | 80.9      | léger ajustement   |
+ * | B    | Bassin (tour fesses) | 102      | 75.2      | facteur 3.49       |
+ * | K    | Cuisse/Entrejambe    | 69       | —         | AJOUTÉE            |
+ * | LP   | Longueur pantalon    | 94       | 94.2      | ✅ parfait          |
+ * | B    | Tour cheville        | 16       | —         | AJOUTÉE            |
  */
 
 // --- Indices des landmarks ---
@@ -52,114 +49,155 @@ const LANDMARKS = {
 };
 
 // ================================================================
-// CORRECTIONS CALIBRÉES
+// CONSTANTES DE BASE — calibrées pour le BMI de référence (24.5)
+// Ces valeurs sont ensuite ajustées dynamiquement par computeMorphFactors()
 // ================================================================
-// OFFSETS : additifs, proportionnels à la taille (cm)
-// Compensent la différence entre articulations squelettiques et surface de la peau
-const OFFSETS = {
-    // Épaules : les landmarks sont au centre de l'articulation gléno-humérale
-    // L'acromion (bord extérieur) est ~5cm plus loin de chaque côté
-    // → 10cm total, soit taille × 0.056
-    SHOULDER: 0.056,
 
-    // Hanches : les landmarks sont sur l'os iliaque
-    // La surface extérieure (grand trochanter + tissus) est ~4.5cm de chaque côté
-    // → 9cm total, soit taille × 0.050
-    HIP: 0.050,
-
-    // Taille : les landmarks milieu-tronc sont ~3cm de chaque côté sous la peau
-    // → 6cm total, soit taille × 0.033
-    WAIST: 0.033
+// --- OFFSETS DE BASE (compensation articulation → surface peau) ---
+const BASE_OFFSETS = {
+    SHOULDER: 0.064,  // Épaules : articulation gléno-humérale
+    HIP: 0.094,       // Hanches : articulation coxo-fémorale (très interne)
+    WAIST: 0.033      // Taille : offset milieu-tronc
 };
 
-// FACTEURS ELLIPTIQUES : convertissent la largeur surfacique 2D en circumférence 3D
-// Dérivés des vraies mesures : réel / (largeur_appli + offset)
-const FACTORS = {
-    // Tour de poitrine = (largeurÉpaules + offset) × 2.18
-    // Calibré : 98 / 44.9 ≈ 2.18
-    POITRINE: 2.18,
+// --- RATIOS DE PROFONDEUR DE BASE (rapport profondeur/largeur par zone) ---
+const BASE_DEPTH_RATIOS = {
+    CHEST: 0.65,    // Thorax : section elliptique aplatie
+    WAIST: 0.47,    // Abdomen : section plus plate
+    HIPS: 0.68,     // Bassin : section large
+    NECK: 0.88      // Cou : quasi-circulaire
+};
 
-    // Tour de taille = (largeurTaille + offset) × 2.40
-    TAILLE: 2.40,
+// --- CONVERSIONS ANATOMIQUES DE BASE (landmark → largeur réelle) ---
+const BASE_ANATOMICAL = {
+    CHEST_TO_SHOULDER: 0.80,   // Largeur poitrine ≈ 80% largeur épaules
+    NECK_TO_EAR: 1.09          // Cou : calibré pour ~40cm tour de cou
+};
 
-    // Tour de hanches = (largeurHanches + offset) × 2.57
-    // Calibré : 78 / 30.4 ≈ 2.57
-    HANCHES: 2.57,
+// --- RATIOS DE CIRCONFÉRENCE DE BASE (parties non mesurables frontalement) ---
+const BASE_CIRC_RATIOS = {
+    ARM_TO_SHOULDER: 0.833,   // Tour bras / largeur épaules
+    THIGH_TO_HIP: 0.683,     // Tour cuisse / tour bassin
+    KNEE_TO_HIP: 0.54,       // Tour genou / tour bassin
+    ANKLE_TO_HIP: 0.158      // Tour cheville / tour bassin
+};
 
-    // Tour de cou = largeurOreilles × 3.31
-    // Calibré : 39 / 11.8 ≈ 3.31 (facteur direct, pas d'offset)
-    COU: 3.31,
-
-    // Tour de bras = longueurAvantBras × 0.98
-    // Calibré : 26 / 26.5 ≈ 0.98
-    BRAS: 0.98,
-
-    // Tour de genou ≈ 54% du tour de hanches (relation anthropométrique connue)
-    GENOU_RATIO: 0.54,
-
-    // Correction longueur manche (poignet landmarks ≠ bout du poignet)
-    MANCHE_CORRECTION: 1.09,
-
-    // Correction longueur jambe (différence crotch estimé vs réel)
-    JAMBE_CORRECTION: 1.11
+// --- FACTEURS DE CORRECTION DES LONGUEURS ---
+const BASE_FACTORS = {
+    CM_CORRECTION: 1.08,      // Manche courte (épaule→coude)
+    LM_CORRECTION: 1.04,      // Manche longue (épaule→poignet)
+    JAMBE_CORRECTION: 1.13,   // Longueur jambe (hanche→cheville)
+    HABIT_CORRECTION: 1.50,   // Longueur habit (épaule→hanche)
+    GLOBAL_CORRECTION: 1.05   // Longueur globale (épaule→tibia)
 };
 
 // ================================================================
-// FONCTIONS DE CALCUL DE DISTANCE
+// BMI DE RÉFÉRENCE — point de calibration des constantes de base
+// Les constantes ci-dessus sont exactes pour ce BMI.
+// Pour tout autre BMI, elles sont ajustées par computeMorphFactors().
+// ================================================================
+const REF_BMI = 21;
+
+// ================================================================
+// MODÈLE MORPHOLOGIQUE — Ajuste les constantes selon le BMI
+// ================================================================
+function computeMorphFactors(bmi) {
+    const ratio = bmi / REF_BMI;
+
+    // --- tissueFactor : épaisseur des tissus mous autour des articulations ---
+    // Power 1.5 en-dessous (réduction douce pour les minces)
+    // Power 1.2 au-dessus (augmentation modérée pour les costauds)
+    const tissueFactor = ratio < 1
+        ? Math.pow(Math.max(0.5, ratio), 1.5)
+        : Math.pow(Math.min(1.6, ratio), 1.2);
+
+    const depthFactor = Math.max(0.85, Math.min(1.15,
+        0.70 + 0.30 * ratio
+    ));
+
+    const circFactor = Math.max(0.80, Math.min(1.20,
+        0.65 + 0.35 * ratio
+    ));
+
+    return { tissueFactor, depthFactor, circFactor, bmi };
+}
+
+// ================================================================
+// Périmètre d'une ellipse (approximation de Ramanujan)
+// ================================================================
+function ellipsePerimeter(width, depthRatio) {
+    const a = width / 2;
+    const b = a * depthRatio;
+    const h = Math.pow((a - b) / (a + b), 2);
+    return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+}
+
+// ================================================================
+// FONCTIONS UTILITAIRES
 // ================================================================
 
-/**
- * Distance en cm entre deux landmarks (espace pixel réel)
- */
-function distanceCm(a, b, cmPerPixel, videoWidth, videoHeight) {
-    const dxPx = (a.x - b.x) * videoWidth;
-    const dyPx = (a.y - b.y) * videoHeight;
-    return Math.sqrt(dxPx * dxPx + dyPx * dyPx) * cmPerPixel;
+function round(v) { return Math.round(v * 10) / 10; }
+
+function hDist(a, b, cpp, vw) {
+    return Math.abs(a.x - b.x) * vw * cpp;
 }
 
-/**
- * Distance horizontale pure en cm
- */
-function hDist(a, b, cmPerPixel, videoWidth) {
-    return Math.abs(a.x - b.x) * videoWidth * cmPerPixel;
+function distanceCm(a, b, cpp, vw, vh) {
+    const dx = (a.x - b.x) * vw;
+    const dy = (a.y - b.y) * vh;
+    return Math.sqrt(dx * dx + dy * dy) * cpp;
 }
 
-/**
- * Distance euclidienne 2D normalisée (pour stabilité)
- */
-function distance2D(a, b) {
-    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-}
-
-/**
- * Point milieu entre deux landmarks
- */
 function mid(a, b) {
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-/** Arrondir à 1 décimale */
-function round(v) {
-    return Math.round(v * 10) / 10;
+function distance2D(a, b) {
+    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
 
 // ================================================================
-// CALCUL PRINCIPAL DES MESURES
+// LABELS TAILLEUR — Dictionnaire d'affichage
+// ================================================================
+export const MESURE_LABELS = {
+    E:        { short: 'E',     full: 'Épaule (largeur)',           group: 'haut' },
+    P:        { short: 'P',     full: 'Poitrine (tour)',            group: 'haut' },
+    C:        { short: 'C',     full: 'Ceinture (tour de taille)',  group: 'haut' },
+    B:        { short: 'B',     full: 'Bassin (tour de fesses)',    group: 'haut' },
+    cou:      { short: 'Cou',   full: 'Tour de cou',                group: 'haut' },
+    tM:       { short: 'tM',    full: 'Tour de manche (bras)',      group: 'haut' },
+    L_habit:  { short: 'L',     full: 'Longueur habit (épaule→hanche)', group: 'haut' },
+    CM:       { short: 'CM',    full: 'Manche courte (épaule→coude)', group: 'manches' },
+    LM:       { short: 'LM',    full: 'Manche longue (épaule→poignet)', group: 'manches' },
+    K:        { short: 'K',     full: 'Cuisse / Entrejambe',        group: 'jambes' },
+    LP:       { short: 'LP',    full: 'Longueur pantalon (hanche→cheville)', group: 'jambes' },
+    L_global: { short: 'L',     full: 'Longueur globale (épaule→tibia)', group: 'jambes' },
+    T_genou:  { short: 'TG',    full: 'Tour de genou',              group: 'jambes' },
+    TChev:    { short: 'TChev', full: 'Tour de cheville',            group: 'jambes' },
+};
+
+// ================================================================
+// CALCUL PRINCIPAL DES MESURES (v6 — BMI-Adaptive)
 // ================================================================
 
 /**
- * Calcule les 12 mesures corporelles pour un tailleur
+ * Calcule les 14 mesures corporelles pour un tailleur
+ * Les constantes sont ajustées dynamiquement selon le BMI du client.
  *
- * @param {Array} landmarks - 33 landmarks MediaPipe Pose
- * @param {number} heightCm - Taille réelle (cm)
- * @param {number} vw - Largeur vidéo (pixels)
- * @param {number} vh - Hauteur vidéo (pixels)
- * @returns {Object} 12 mesures en cm
+ * @param {Array} landmarks  - 33 landmarks MediaPipe Pose
+ * @param {number} heightCm  - Taille réelle (cm)
+ * @param {number} vw        - Largeur vidéo (pixels)
+ * @param {number} vh        - Hauteur vidéo (pixels)
+ * @param {number} weightKg  - Poids réel (kg) — utilisé pour le BMI
+ * @returns {Object} 14 mesures en cm avec notation tailleur
  */
-export function calculateAllMeasurements(landmarks, heightCm, vw = 1280, vh = 720) {
+export function calculateAllMeasurements(landmarks, heightCm, vw = 1280, vh = 720, weightKg = 70) {
     if (!landmarks || landmarks.length < 29) {
         throw new Error('Landmarks insuffisants');
     }
+
+    const bmi = weightKg / Math.pow(heightCm / 100, 2);
+    const morph = computeMorphFactors(bmi);
 
     // --- Landmarks ---
     const nose = landmarks[LANDMARKS.NOSE];
@@ -189,98 +227,140 @@ export function calculateAllMeasurements(landmarks, heightCm, vw = 1280, vh = 72
 
     const cpp = heightCm / bodyHeightPx; // cm par pixel
 
-    // --- OFFSETS proportionnels à la taille ---
-    const shOffset = heightCm * OFFSETS.SHOULDER;
-    const hipOffset = heightCm * OFFSETS.HIP;
-    const waistOffset = heightCm * OFFSETS.WAIST;
+    // --- FACTEURS MORPHOLOGIQUES ---
+    const heightRatio = heightCm / 175; // ratio par rapport à la taille de réf.
+    const bmiRatio = morph.bmi / REF_BMI;
+    // Compound: combine taille + tissu pour les corrections de longueur torse
+    const heightTissueFactor = Math.pow(heightRatio * morph.tissueFactor, 1.5);
+
+    // --- OFFSETS ajustés par morphologie ---
+    // ÉPAULES: réduit par tissueFactor (peu de tissu chez les minces)
+    const shOffset = heightCm * BASE_OFFSETS.SHOULDER * morph.tissueFactor;
+    // HANCHES: asymétrique — les minces gardent des hanches proéminentes,
+    // les costauds ont PLUS de tissu aux hanches
+    const hipTissue = morph.tissueFactor < 1
+        ? (1 / morph.tissueFactor)   // BMI bas → inverse (hanches ne maigrissent pas)
+        : morph.tissueFactor;         // BMI haut → normal (plus de tissu)
+    const hipOffset = heightCm * BASE_OFFSETS.HIP * hipTissue;
+    // TAILLE: réduction douce (racine carrée du tissueFactor)
+    const waistOffset = heightCm * BASE_OFFSETS.WAIST * Math.pow(morph.tissueFactor, 0.5);
 
     // ============================================================
-    // 1. LARGEUR D'ÉPAULES (+ offset articulaire)
+    // E — LARGEUR D'ÉPAULES (mesurée directement depuis les landmarks)
     // ============================================================
     const shRaw = hDist(lSh, rSh, cpp, vw);
-    const largeurEpaules = round(shRaw + shOffset);
+    const E = round(shRaw + shOffset);
 
     // ============================================================
-    // 2. TOUR DE COU (distance inter-auriculaire × facteur calibré)
+    // cou — TOUR DE COU (ellipse sur la largeur du cou)
     // ============================================================
     const earWidth = hDist(lEar, rEar, cpp, vw);
-    const tourCou = round(earWidth * FACTORS.COU);
+    const neckWidth = earWidth * BASE_ANATOMICAL.NECK_TO_EAR * Math.pow(morph.depthFactor, 0.5);
+    const cou = round(ellipsePerimeter(neckWidth, BASE_DEPTH_RATIOS.NECK * morph.depthFactor));
 
     // ============================================================
-    // 3. TOUR DE POITRINE (largeur surface épaules × facteur elliptique)
+    // P — TOUR DE POITRINE (ellipse: largeur poitrine × profondeur)
     // ============================================================
-    const poitrine = round(largeurEpaules * FACTORS.POITRINE);
+    const chestWidth = E * BASE_ANATOMICAL.CHEST_TO_SHOULDER;
+    const P = round(ellipsePerimeter(chestWidth, BASE_DEPTH_RATIOS.CHEST * morph.depthFactor));
 
     // ============================================================
-    // 4. TOUR DE TAILLE (milieu du tronc + offset × facteur)
+    // C — CEINTURE / TOUR DE TAILLE (ellipse: largeur taille mesurée)
     // ============================================================
     const waistRaw = hDist(mid(lSh, lHip), mid(rSh, rHip), cpp, vw);
-    const taille = round((waistRaw + waistOffset) * FACTORS.TAILLE);
+    const waistWidth = waistRaw + waistOffset;
+    const C = round(ellipsePerimeter(waistWidth, BASE_DEPTH_RATIOS.WAIST * morph.depthFactor));
 
     // ============================================================
-    // 5. TOUR DE HANCHES (largeur hanches + offset × facteur)
+    // B — BASSIN / TOUR DE FESSES (ellipse: largeur hanches mesurée)
+    // depthFactor NON appliqué: les hanches ne s'aplatissent pas chez les minces
     // ============================================================
     const hipRaw = hDist(lHip, rHip, cpp, vw);
-    const hanches = round((hipRaw + hipOffset) * FACTORS.HANCHES);
+    const hipWidth = hipRaw + hipOffset;
+    const B = round(ellipsePerimeter(hipWidth, BASE_DEPTH_RATIOS.HIPS));
 
     // ============================================================
-    // 6. TOUR DE BRAS / Tour manche (avant-bras × facteur calibré)
+    // tM — TOUR DE MANCHE / BRAS
+    // Les bras maigrissent VITE avec un BMI bas → ratio^2
     // ============================================================
-    const lFA = distanceCm(lEl, lWr, cpp, vw, vh);
-    const rFA = distanceCm(rEl, rWr, cpp, vw, vh);
-    const tourBras = round(((lFA + rFA) / 2) * FACTORS.BRAS);
+    const armFactor = bmiRatio < 1 ? Math.pow(bmiRatio, 2) : Math.pow(bmiRatio, 1.2);
+    const tM = round(E * BASE_CIRC_RATIOS.ARM_TO_SHOULDER * armFactor);
 
     // ============================================================
-    // 7. LONGUEUR DU DOS (milieu épaules → milieu hanches)
+    // L_habit — LONGUEUR HABIT (épaule → bas de hanche)
+    // Correction réduite pour les personnes courtes/minces (moins de tissu = moins de courbure)
     // ============================================================
-    const longueurDos = round(distanceCm(mid(lSh, rSh), mid(lHip, rHip), cpp, vw, vh));
+    const lSide = distanceCm(lSh, lHip, cpp, vw, vh);
+    const rSide = distanceCm(rSh, rHip, cpp, vw, vh);
+    const L_habit = round(((lSide + rSide) / 2) * BASE_FACTORS.HABIT_CORRECTION * heightTissueFactor);
 
     // ============================================================
-    // 8. LONGUEUR MANCHE (épaule → coude → poignet × correction)
+    // CM — MANCHE COURTE (épaule → coude)
+    // Correction réduite pour les personnes courtes/minces
+    // ============================================================
+    const lShEl = distanceCm(lSh, lEl, cpp, vw, vh);
+    const rShEl = distanceCm(rSh, rEl, cpp, vw, vh);
+    const CM = round(((lShEl + rShEl) / 2) * BASE_FACTORS.CM_CORRECTION * heightTissueFactor);
+
+    // ============================================================
+    // LM — MANCHE LONGUE (épaule → coude → poignet) — MESURE DIRECTE
     // ============================================================
     const lArm = distanceCm(lSh, lEl, cpp, vw, vh) + distanceCm(lEl, lWr, cpp, vw, vh);
     const rArm = distanceCm(rSh, rEl, cpp, vw, vh) + distanceCm(rEl, rWr, cpp, vw, vh);
-    const longueurManche = round(((lArm + rArm) / 2) * FACTORS.MANCHE_CORRECTION);
+    const LM = round(((lArm + rArm) / 2) * BASE_FACTORS.LM_CORRECTION);
 
     // ============================================================
-    // 9. TOUR DE GENOU (estimé depuis le tour de hanches)
+    // K — TOUR DE CUISSE (proportionnel au tour de bassin)
+    // Les cuisses maigrissent MOINS que les bras → ratio^0.5
     // ============================================================
-    const tourGenou = round(hanches * FACTORS.GENOU_RATIO);
+    const thighFactor = bmiRatio < 1 ? Math.pow(bmiRatio, 0.5) : Math.pow(bmiRatio, 1.2);
+    const K = round(B * BASE_CIRC_RATIOS.THIGH_TO_HIP * thighFactor);
 
     // ============================================================
-    // 10. LONGUEUR HANCHE → GENOU
+    // T_genou — TOUR DE GENOU (proportionnel au tour de bassin)
     // ============================================================
-    const lHK = distanceCm(lHip, lKn, cpp, vw, vh);
-    const rHK = distanceCm(rHip, rKn, cpp, vw, vh);
-    const hancheGenou = round(((lHK + rHK) / 2) * FACTORS.JAMBE_CORRECTION);
+    const T_genou = round(B * BASE_CIRC_RATIOS.KNEE_TO_HIP * Math.pow(thighFactor, 0.5));
 
     // ============================================================
-    // 11. LONGUEUR HANCHE → CHEVILLE (longueur de jambe extérieure)
+    // LP — LONGUEUR PANTALON (hanche → cheville)
+    // Boost pour les personnes plus courtes (jambes proportionnellement plus longues)
     // ============================================================
     const lHC = distanceCm(lHip, lAn, cpp, vw, vh);
     const rHC = distanceCm(rHip, rAn, cpp, vw, vh);
-    const hancheCheville = round(((lHC + rHC) / 2) * FACTORS.JAMBE_CORRECTION);
+    const lpBoost = 1 + (1 - heightRatio) * 0.8;
+    const LP = round(((lHC + rHC) / 2) * BASE_FACTORS.JAMBE_CORRECTION * lpBoost);
 
     // ============================================================
-    // 12. LONGUEUR TOTALE (épaule → cheville — pour boubous/robes)
+    // L_global — LONGUEUR GLOBALE (épaule → tibia) — MESURE DIRECTE
     // ============================================================
-    const lTot = distanceCm(lSh, lAn, cpp, vw, vh);
-    const rTot = distanceCm(rSh, rAn, cpp, vw, vh);
-    const longueurTotale = round(((lTot + rTot) / 2) * FACTORS.JAMBE_CORRECTION);
+    const lShKn = distanceCm(lSh, lKn, cpp, vw, vh);
+    const rShKn = distanceCm(rSh, rKn, cpp, vw, vh);
+    const lKnAn = distanceCm(lKn, lAn, cpp, vw, vh);
+    const rKnAn = distanceCm(rKn, rAn, cpp, vw, vh);
+    const avgShKn = (lShKn + rShKn) / 2;
+    const avgKnAn = (lKnAn + rKnAn) / 2;
+    const L_global = round((avgShKn + avgKnAn * 0.5) * BASE_FACTORS.GLOBAL_CORRECTION);
+
+    // ============================================================
+    // TChev — TOUR DE CHEVILLE (proportionnel au tour de bassin)
+    // ============================================================
+    const TChev = round(B * BASE_CIRC_RATIOS.ANKLE_TO_HIP * Math.pow(morph.circFactor, 0.3));
 
     return {
-        tourCou,
-        largeurEpaules,
-        poitrine,
-        taille,
-        hanches,
-        tourBras,
-        longueurDos,
-        longueurManche,
-        tourGenou,
-        hancheGenou,
-        hancheCheville,
-        longueurTotale
+        E,
+        P,
+        C,
+        B,
+        cou,
+        tM,
+        L_habit,
+        CM,
+        LM,
+        K,
+        LP,
+        L_global,
+        T_genou,
+        TChev
     };
 }
 
@@ -337,7 +417,7 @@ export function validatePoseQuality(landmarks) {
     let isValid = true;
 
     if (!landmarks || landmarks.length < 29) {
-        return { isValid: false, messages: ['📷 Corps non détecté — placez-vous devant la caméra'] };
+        return { isValid: false, messages: ['Corps non détecté — placez-vous devant la caméra'] };
     }
 
     const lSh = landmarks[LANDMARKS.LEFT_SHOULDER];
@@ -478,6 +558,13 @@ export function drawMeasurementLines(ctx, landmarks, width, height) {
     draw(landmarks[LANDMARKS.LEFT_EAR], landmarks[LANDMARKS.RIGHT_EAR], 'rgba(139, 94, 60, 0.8)');
     // Genoux
     draw(landmarks[LANDMARKS.LEFT_KNEE], landmarks[LANDMARKS.RIGHT_KNEE], 'rgba(198, 139, 89, 0.6)');
+    // Longueur habit (épaule → hanche, un côté)
+    draw(ls, lh, 'rgba(139, 94, 60, 0.5)');
+    // Entrejambe (milieu hanches → genou)
+    if (lh && rh) {
+        const crotch = mid(lh, rh);
+        draw(crotch, landmarks[LANDMARKS.LEFT_KNEE], 'rgba(198, 139, 89, 0.4)');
+    }
 
     ctx.setLineDash([]);
 }

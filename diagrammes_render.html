@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FITMOD — Diagrammes de Classes v2</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Outfit',sans-serif; background:#faf6f1; color:#2d1810; min-height:100vh; }
+        .header { background:linear-gradient(135deg,#8B5E3C,#6b4730); padding:48px 40px; text-align:center; color:#fff; }
+        .header h1 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:800; margin-bottom:8px; }
+        .header p { font-size:16px; opacity:0.8; }
+        .header .badge { display:inline-block; background:rgba(255,255,255,0.15); padding:6px 16px; border-radius:20px; font-size:13px; font-weight:700; margin-top:12px; }
+        .container { max-width:1200px; margin:0 auto; padding:40px 24px; }
+        .sprint-card { background:#fff; border-radius:20px; border:2px solid rgba(139,94,60,0.08); padding:32px; margin-bottom:32px; box-shadow:0 4px 20px rgba(139,94,60,0.05); }
+        .sprint-card h2 { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:800; color:#8B5E3C; margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+        .sprint-card h2 .sprint-badge { background:linear-gradient(135deg,#8B5E3C,#C68B59); color:#fff; padding:4px 14px; border-radius:10px; font-size:13px; }
+        .sprint-card .desc { font-size:14px; color:#8b7060; margin-bottom:20px; line-height:1.6; }
+        .sprint-card .tables-list { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+        .sprint-card .tables-list span { background:#faf6f1; border:1px solid rgba(139,94,60,0.1); padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700; color:#8B5E3C; }
+        .mermaid { background:#faf6f1; border-radius:12px; padding:20px; border:1px solid rgba(139,94,60,0.06); overflow-x:auto; }
+        .changes-section { background:linear-gradient(135deg,#F5E6D3,#faf6f1); border-radius:20px; padding:32px; margin-bottom:32px; border:2px solid rgba(139,94,60,0.1); }
+        .changes-section h2 { font-family:'Space Grotesk',sans-serif; font-size:22px; margin-bottom:16px; color:#8B5E3C; }
+        .changes-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+        .change-item { background:#fff; border-radius:12px; padding:16px; border:1px solid rgba(139,94,60,0.06); }
+        .change-item .old { font-size:13px; color:#dc2626; text-decoration:line-through; margin-bottom:4px; }
+        .change-item .new { font-size:13px; color:#16a34a; font-weight:700; }
+        .change-item .label { font-size:11px; color:#8b7060; text-transform:uppercase; font-weight:800; margin-bottom:4px; letter-spacing:0.5px; }
+        .footer { text-align:center; padding:32px; color:#8b7060; font-size:13px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>FITMOD — Diagrammes de Classes v2</h1>
+    <p>Architecture objet de la plateforme, structurée par sprint</p>
+    <div class="badge">12 tables • 4 sprints • 2 triggers • 0 table inutile</div>
+</div>
+
+<div class="container">
+
+<!-- CHANGEMENTS v1 → v2 -->
+<div class="changes-section">
+    <h2>🔄 Changements v1 → v2</h2>
+    <div class="changes-grid">
+        <div class="change-item">
+            <div class="label">Table Client</div>
+            <div class="old">Table client avec id propre</div>
+            <div class="new">✓ Supprimée — type_compte = 'client'</div>
+        </div>
+        <div class="change-item">
+            <div class="label">Table Portfolio</div>
+            <div class="old">Table portfolio redondante</div>
+            <div class="new">✓ Supprimée — catalogue = les modèles</div>
+        </div>
+        <div class="change-item">
+            <div class="label">ID Tailleur</div>
+            <div class="old">tailleur.id + utilisateur_id (double)</div>
+            <div class="new">✓ utilisateur_id = PK unique</div>
+        </div>
+        <div class="change-item">
+            <div class="label">Mesures</div>
+            <div class="old">Colonnes dans la table client</div>
+            <div class="new">✓ Table mesure séparée (0..1)</div>
+        </div>
+        <div class="change-item">
+            <div class="label">Messagerie</div>
+            <div class="old">Message lié à commande_id</div>
+            <div class="new">✓ Conversation + Message (chat libre)</div>
+        </div>
+        <div class="change-item">
+            <div class="label">Paiement</div>
+            <div class="old">Pas de système de paiement</div>
+            <div class="new">✓ Table paiement (Mobile Money, Carte…)</div>
+        </div>
+    </div>
+</div>
+
+<!-- SPRINT 1 -->
+<div class="sprint-card">
+    <h2><span class="sprint-badge">Sprint 1</span> Inscription, Connexion & Gestion Utilisateurs</h2>
+    <p class="desc">Gestion de l'authentification et des comptes. Un client est un Utilisateur avec type_compte='client'. Le Tailleur étend le profil utilisateur avec un seul identifiant (utilisateur_id comme PK).</p>
+    <div class="tables-list">
+        <span>utilisateur</span>
+        <span>tailleur</span>
+        <span>ETypeCompte</span>
+        <span>EStatutTailleur</span>
+    </div>
+    <div class="mermaid">
+classDiagram
+    class Utilisateur {
+        -id : int [PK]
+        -nom : string
+        -prenom : string
+        -email : string
+        -mot_de_passe : string
+        -telephone : string
+        -ville : string
+        -type_compte : ETypeCompte
+        -date_inscription : datetime
+        -actif : boolean
+        +inscrire()
+        +authentifier()
+        +modifierProfil()
+        +desactiver()
+    }
+
+    class Tailleur {
+        -utilisateur_id : int [PK/FK]
+        -nom_atelier : string
+        -adresse : string
+        -quartier : string
+        -specialites : string
+        -tarif_min : decimal
+        -delai_moyen : int
+        -note_moyenne : decimal
+        -statut : EStatutTailleur
+        -valide_admin : boolean
+        +modifierProfil()
+        +changerStatut()
+    }
+
+    class ETypeCompte {
+        &lt;&lt;enumeration&gt;&gt;
+        CLIENT
+        TAILLEUR
+        ADMIN
+    }
+
+    class EStatutTailleur {
+        &lt;&lt;enumeration&gt;&gt;
+        ACTIF
+        EN_CONGE
+        SUSPENDU
+    }
+
+    Utilisateur "1" -- "0..1" Tailleur : est un
+    Utilisateur ..> ETypeCompte
+    Tailleur ..> EStatutTailleur
+    </div>
+</div>
+
+<!-- SPRINT 2 -->
+<div class="sprint-card">
+    <h2><span class="sprint-badge">Sprint 2</span> Catalogue, Commandes, Avis, Favoris & Paiement</h2>
+    <p class="desc">Le tailleur propose son catalogue (= ses modèles). Le client passe des commandes, laisse des avis et met en favoris. Le paiement est lié à chaque commande avec suivi du statut.</p>
+    <div class="tables-list">
+        <span>modele</span>
+        <span>commande</span>
+        <span>statut_commande</span>
+        <span>avis</span>
+        <span>favori</span>
+        <span>paiement</span>
+    </div>
+    <div class="mermaid">
+classDiagram
+    class Tailleur {
+        -utilisateur_id : int [PK/FK]
+        -nom_atelier : string
+        -specialites : string
+        -note_moyenne : decimal
+        +accepterCommande()
+        +refuserCommande()
+    }
+
+    class Modele {
+        -id : int [PK]
+        -tailleur_id : int [FK]
+        -titre : string
+        -description : string
+        -type_tenue : string
+        -photo_url : string
+        -modele_3d_url : string
+        -prix_base : decimal
+        -delai_confection : int
+        -couleurs_disponibles : json
+        -actif : boolean
+        +creer()
+        +modifier()
+        +supprimer()
+    }
+
+    class Commande {
+        -id : int [PK]
+        -client_id : int [FK]
+        -tailleur_id : int [FK]
+        -modele_id : int [FK]
+        -mesures_utilisees : json
+        -tissu_choisi : string
+        -couleur : string
+        -prix_total : decimal
+        -statut : EStatutCommande
+        -date_commande : datetime
+        -notes_client : string
+        +passer()
+        +changerStatut()
+        +annuler()
+    }
+
+    class StatutCommande {
+        -id : int [PK]
+        -commande_id : int [FK]
+        -libelle : string
+        -commentaire : string
+        -date_heure : datetime
+    }
+
+    class Avis {
+        -id : int [PK]
+        -commande_id : int [FK] UNIQUE
+        -client_id : int [FK]
+        -tailleur_id : int [FK]
+        -note : int
+        -commentaire : string
+        +publier()
+    }
+
+    class Favori {
+        -id : int [PK]
+        -utilisateur_id : int [FK]
+        -modele_id : int [FK]
+        +ajouter()
+        +retirer()
+    }
+
+    class Paiement {
+        -id : int [PK]
+        -commande_id : int [FK]
+        -payeur_id : int [FK]
+        -beneficiaire_id : int [FK]
+        -montant : decimal
+        -methode : EMethodePaiement
+        -statut : EStatutPaiement
+        -reference : string
+        -date_paiement : datetime
+        +effectuer()
+        +valider()
+        +rembourser()
+    }
+
+    class EStatutCommande {
+        &lt;&lt;enumeration&gt;&gt;
+        EN_ATTENTE_ACCEPTATION
+        ACCEPTEE
+        TISSU_DECOUPE
+        COUTURE_EN_COURS
+        FINITIONS
+        PRET_A_RECUPERER
+        LIVRE
+        ANNULEE
+    }
+
+    class EMethodePaiement {
+        &lt;&lt;enumeration&gt;&gt;
+        MOBILE_MONEY
+        CARTE
+        ESPECES
+        VIREMENT
+    }
+
+    class EStatutPaiement {
+        &lt;&lt;enumeration&gt;&gt;
+        EN_ATTENTE
+        VALIDE
+        ECHOUE
+        REMBOURSE
+    }
+
+    Tailleur "1" -- "0..*" Modele : catalogue
+    Utilisateur "1" -- "0..*" Commande : passe
+    Tailleur "1" -- "0..*" Commande : reçoit
+    Modele "1" -- "0..*" Commande : concerne
+    Commande "1" -- "0..*" StatutCommande : historique
+    Commande "1" -- "0..1" Avis : reçoit
+    Commande "1" -- "0..*" Paiement : est payée par
+    Utilisateur "1" -- "0..*" Favori : possède
+    Modele "1" -- "0..*" Favori : est favori de
+    Commande ..> EStatutCommande
+    Paiement ..> EMethodePaiement
+    Paiement ..> EStatutPaiement
+    </div>
+</div>
+
+<!-- SPRINT 3 -->
+<div class="sprint-card">
+    <h2><span class="sprint-badge">Sprint 3</span> Mesures par IA & Messagerie</h2>
+    <p class="desc">Table Mesure séparée (0 ou 1 par client). Système de conversation libre entre utilisateurs (pas lié à une commande). Messages texte, audio et image.</p>
+    <div class="tables-list">
+        <span>mesure</span>
+        <span>conversation</span>
+        <span>message</span>
+        <span>ETypeMessage</span>
+    </div>
+    <div class="mermaid">
+classDiagram
+    class Utilisateur {
+        -id : int [PK]
+        -nom : string
+        -prenom : string
+        -type_compte : ETypeCompte
+    }
+
+    class Mesure {
+        -id : int [PK]
+        -utilisateur_id : int [FK] UNIQUE
+        -poitrine : decimal
+        -taille : decimal
+        -hanches : decimal
+        -longueur_dos : decimal
+        -longueur_bras : decimal
+        -tour_cou : decimal
+        -entrejambe : decimal
+        -hauteur : decimal
+        -mesures_json : json
+        -date_prise : datetime
+        +enregistrer()
+        +mettreAJour()
+    }
+
+    class Conversation {
+        -id : int [PK]
+        -utilisateur1_id : int [FK]
+        -utilisateur2_id : int [FK]
+        -date_creation : datetime
+        +creer()
+        +chargerMessages()
+    }
+
+    class Message {
+        -id : int [PK]
+        -conversation_id : int [FK]
+        -expediteur_id : int [FK]
+        -type_message : ETypeMessage
+        -contenu : string
+        -date_heure : datetime
+        -lu : boolean
+        +envoyerTexte()
+        +envoyerAudio()
+        +envoyerImage()
+        +marquerLu()
+    }
+
+    class ETypeMessage {
+        &lt;&lt;enumeration&gt;&gt;
+        TEXTE
+        AUDIO
+        IMAGE
+    }
+
+    Utilisateur "1" -- "0..1" Mesure : possède
+    Utilisateur "1" -- "0..*" Conversation : participe
+    Conversation "1" -- "0..*" Message : contient
+    Utilisateur "1" -- "0..*" Message : envoie
+    Message ..> ETypeMessage
+    </div>
+</div>
+
+<!-- SPRINT 4 -->
+<div class="sprint-card">
+    <h2><span class="sprint-badge">Sprint 4</span> Cabine d'Essayage Virtuelle</h2>
+    <p class="desc">Suivi des sessions d'essayage virtuel. L'utilisateur essaie un modèle (avec ou sans modèle 3D) et peut capturer le résultat. Les mesures servent au calibrage.</p>
+    <div class="tables-list">
+        <span>session_essayage</span>
+        <span>modele</span>
+        <span>mesure</span>
+    </div>
+    <div class="mermaid">
+classDiagram
+    class Utilisateur {
+        -id : int [PK]
+        -nom : string
+        -prenom : string
+    }
+
+    class Modele {
+        -id : int [PK]
+        -titre : string
+        -photo_url : string
+        -modele_3d_url : string
+    }
+
+    class SessionEssayage {
+        -id : int [PK]
+        -utilisateur_id : int [FK]
+        -modele_id : int [FK]
+        -date_session : datetime
+        -capture_url : string
+        +demarrer()
+        +capturer()
+        +terminer()
+    }
+
+    class Mesure {
+        -id : int [PK]
+        -utilisateur_id : int [FK]
+        -hauteur : decimal
+        -mesures_json : json
+    }
+
+    Utilisateur "1" -- "0..*" SessionEssayage : effectue
+    Modele "1" -- "0..*" SessionEssayage : est essayé dans
+    Utilisateur "1" -- "0..1" Mesure : calibre avec
+    </div>
+</div>
+
+<!-- DIAGRAMME GLOBAL -->
+<div class="sprint-card" style="border-color: #C68B59;">
+    <h2><span class="sprint-badge" style="background:linear-gradient(135deg,#6b4730,#8B5E3C);">GLOBAL</span> Diagramme de Classes Complet</h2>
+    <p class="desc">Vue d'ensemble de toutes les classes de l'application FITMOD v2 : 12 tables, 4 énumérations, toutes les relations. Un utilisateur avec type_compte='client' n'a pas de table dédiée.</p>
+    <div class="tables-list">
+        <span>utilisateur</span>
+        <span>tailleur</span>
+        <span>mesure</span>
+        <span>modele</span>
+        <span>commande</span>
+        <span>statut_commande</span>
+        <span>avis</span>
+        <span>favori</span>
+        <span>paiement</span>
+        <span>conversation</span>
+        <span>message</span>
+        <span>session_essayage</span>
+    </div>
+    <div class="mermaid">
+classDiagram
+    class Utilisateur {
+        -id : int [PK]
+        -nom : string
+        -prenom : string
+        -email : string
+        -mot_de_passe : string
+        -telephone : string
+        -ville : string
+        -type_compte : ETypeCompte
+        -date_inscription : datetime
+        -actif : boolean
+        +inscrire()
+        +authentifier()
+        +modifierProfil()
+    }
+
+    class Tailleur {
+        -utilisateur_id : int [PK/FK]
+        -nom_atelier : string
+        -adresse : string
+        -quartier : string
+        -specialites : string
+        -tarif_min : decimal
+        -delai_moyen : int
+        -note_moyenne : decimal
+        -statut : EStatutTailleur
+        -valide_admin : boolean
+        +modifierProfil()
+        +accepterCommande()
+    }
+
+    class Mesure {
+        -id : int [PK]
+        -utilisateur_id : int [FK] UNIQUE
+        -poitrine : decimal
+        -taille : decimal
+        -hanches : decimal
+        -longueur_dos : decimal
+        -longueur_bras : decimal
+        -tour_cou : decimal
+        -entrejambe : decimal
+        -hauteur : decimal
+        -mesures_json : json
+        +enregistrer()
+        +mettreAJour()
+    }
+
+    class Modele {
+        -id : int [PK]
+        -tailleur_id : int [FK]
+        -titre : string
+        -description : string
+        -type_tenue : string
+        -photo_url : string
+        -modele_3d_url : string
+        -prix_base : decimal
+        -delai_confection : int
+        -couleurs_disponibles : json
+        +creer()
+        +modifier()
+    }
+
+    class Commande {
+        -id : int [PK]
+        -client_id : int [FK]
+        -tailleur_id : int [FK]
+        -modele_id : int [FK]
+        -mesures_utilisees : json
+        -prix_total : decimal
+        -statut : EStatutCommande
+        -date_commande : datetime
+        +passer()
+        +changerStatut()
+        +annuler()
+    }
+
+    class StatutCommande {
+        -id : int [PK]
+        -commande_id : int [FK]
+        -libelle : string
+        -date_heure : datetime
+    }
+
+    class Avis {
+        -id : int [PK]
+        -commande_id : int [FK]
+        -client_id : int [FK]
+        -tailleur_id : int [FK]
+        -note : int
+        -commentaire : string
+        +publier()
+    }
+
+    class Favori {
+        -id : int [PK]
+        -utilisateur_id : int [FK]
+        -modele_id : int [FK]
+        +ajouter()
+        +retirer()
+    }
+
+    class Paiement {
+        -id : int [PK]
+        -commande_id : int [FK]
+        -payeur_id : int [FK]
+        -beneficiaire_id : int [FK]
+        -montant : decimal
+        -methode : EMethodePaiement
+        -statut : EStatutPaiement
+        -reference : string
+        +effectuer()
+        +valider()
+        +rembourser()
+    }
+
+    class Conversation {
+        -id : int [PK]
+        -utilisateur1_id : int [FK]
+        -utilisateur2_id : int [FK]
+        +creer()
+        +chargerMessages()
+    }
+
+    class Message {
+        -id : int [PK]
+        -conversation_id : int [FK]
+        -expediteur_id : int [FK]
+        -type_message : ETypeMessage
+        -contenu : string
+        -lu : boolean
+        +envoyerTexte()
+        +marquerLu()
+    }
+
+    class SessionEssayage {
+        -id : int [PK]
+        -utilisateur_id : int [FK]
+        -modele_id : int [FK]
+        -capture_url : string
+        +demarrer()
+        +capturer()
+    }
+
+    class ETypeCompte {
+        &lt;&lt;enumeration&gt;&gt;
+        CLIENT
+        TAILLEUR
+        ADMIN
+    }
+
+    class EStatutTailleur {
+        &lt;&lt;enumeration&gt;&gt;
+        ACTIF
+        EN_CONGE
+        SUSPENDU
+    }
+
+    class EStatutCommande {
+        &lt;&lt;enumeration&gt;&gt;
+        EN_ATTENTE
+        ACCEPTEE
+        COUTURE_EN_COURS
+        LIVRE
+        ANNULEE
+    }
+
+    class ETypeMessage {
+        &lt;&lt;enumeration&gt;&gt;
+        TEXTE
+        AUDIO
+        IMAGE
+    }
+
+    class EMethodePaiement {
+        &lt;&lt;enumeration&gt;&gt;
+        MOBILE_MONEY
+        CARTE
+        ESPECES
+        VIREMENT
+    }
+
+    class EStatutPaiement {
+        &lt;&lt;enumeration&gt;&gt;
+        EN_ATTENTE
+        VALIDE
+        ECHOUE
+        REMBOURSE
+    }
+
+    Utilisateur "1" -- "0..1" Tailleur : est un
+    Utilisateur "1" -- "0..1" Mesure : possède
+    Utilisateur "1" -- "0..*" Commande : passe
+    Utilisateur "1" -- "0..*" Favori : possède
+    Utilisateur "1" -- "0..*" Conversation : participe
+    Utilisateur "1" -- "0..*" SessionEssayage : effectue
+    Utilisateur "1" -- "0..*" Message : envoie
+
+    Tailleur "1" -- "0..*" Modele : catalogue
+    Tailleur "1" -- "0..*" Commande : reçoit
+
+    Modele "1" -- "0..*" Commande : concerne
+    Modele "1" -- "0..*" Favori : est favori de
+    Modele "1" -- "0..*" SessionEssayage : est essayé
+
+    Commande "1" -- "0..*" StatutCommande : historique
+    Commande "1" -- "0..1" Avis : reçoit
+    Commande "1" -- "0..*" Paiement : est payée par
+
+    Conversation "1" -- "0..*" Message : contient
+
+    Utilisateur ..> ETypeCompte
+    Tailleur ..> EStatutTailleur
+    Commande ..> EStatutCommande
+    Message ..> ETypeMessage
+    Paiement ..> EMethodePaiement
+    Paiement ..> EStatutPaiement
+    </div>
+</div>
+
+</div>
+
+<div class="footer">
+    <p>FITMOD v2 — Base de données : 12 tables • 4 énumérations • 2 triggers</p>
+    <p>Auteur : YARGA Yempounti Kim Josaphat Geoffroi — 2026</p>
+</div>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#F5E6D3',
+            primaryTextColor: '#2d1810',
+            primaryBorderColor: '#C68B59',
+            lineColor: '#8B5E3C',
+            secondaryColor: '#faf6f1',
+            tertiaryColor: '#fff',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '13px',
+            classText: '#2d1810'
+        },
+        class: {
+            defaultRenderer: 'dagre-wrapper'
+        }
+    });
+</script>
+
+</body>
+</html>

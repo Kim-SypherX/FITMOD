@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Diagrammes de Séquence FITMOD</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #fff; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; }
+  .page { page-break-after: always; margin-bottom: 60px; }
+  h2 { font-size: 22px; margin-bottom: 8px; color: #1a1a1a; }
+  p.desc { font-size: 15px; color: #444; margin-bottom: 24px; line-height: 1.5; font-style: italic; }
+  .mermaid { background: #fff; padding: 10px; display: flex; justify-content: center; }
+  hr { border: none; border-top: 2px solid #ccc; margin: 50px 0; }
+  .figure { text-align: center; margin-top: 16px; font-size: 14px; font-weight: bold; color: #333; }
+</style>
+</head>
+<body>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', themeVariables: { fontSize: '13px' }, sequence: { mirrorActors: false, useMaxWidth: false } });</script>
+
+<!-- ============================================================ -->
+<!-- SPRINT 1 : Inscription d'un Tailleur                        -->
+<!-- ============================================================ -->
+<div class="page" id="sprint1">
+<h2>6.3.1 Diagramme de séquence d'application du Sprint 1</h2>
+<p class="desc">Pour ce sprint, nous représentons le diagramme de séquence d'application du cas d'utilisation « Inscrire un Tailleur ».</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Tailleur
+    participant IHM as IHM_AuthPage
+    participant CTRL as CTRL_Auth
+    participant SRV as SERVICE_Auth
+    participant BD as Base de données
+
+    Tailleur->>IHM: 1: Accéder à la page d'inscription
+    IHM-->>Tailleur: 2: Afficher le formulaire (type=tailleur)
+    Tailleur->>IHM: 3: Saisir les informations (nom, email, mot de passe, nom atelier...)
+
+    IHM->>CTRL: 3.1: POST /api/auth/register (données formulaire)
+    CTRL->>SRV: 3.1.1: Vérification des données
+
+    alt Données invalides
+        SRV-->>CTRL: 3.1.2: Erreur de validation
+        CTRL-->>IHM: 3.1.2.1: Retourner message d'erreur
+        IHM-->>Tailleur: 3.1.2.2: Afficher notification d'erreur
+    end
+
+    SRV->>SRV: 3.1.3: Hasher le mot de passe (bcrypt)
+    SRV->>BD: 3.1.4: INSERT INTO utilisateur (type_compte='tailleur')
+    BD-->>SRV: 3.1.4.1: Utilisateur créé (id)
+    SRV->>BD: 3.1.5: INSERT INTO tailleur (utilisateur_id, nom_atelier)
+    BD-->>SRV: 3.1.5.1: Profil tailleur créé
+    SRV-->>CTRL: 3.1.6: Retourner succès + session
+    CTRL-->>IHM: 3.1.7: Réponse JSON (token, user)
+    IHM-->>Tailleur: 4: Redirection vers le Tableau de Bord
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Inscrire un Tailleur ».</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- SPRINT 1 bis : Connexion                                     -->
+<!-- ============================================================ -->
+<div class="page" id="sprint1b">
+<h2>6.3.2 Diagramme de séquence d'application du Sprint 1 (suite)</h2>
+<p class="desc">Cas d'utilisation « Se connecter ».</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Utilisateur
+    participant IHM as IHM_AuthPage
+    participant CTRL as CTRL_Auth
+    participant SRV as SERVICE_Auth
+    participant BD as Base de données
+
+    Utilisateur->>IHM: 1: Accéder à la page de connexion
+    IHM-->>Utilisateur: 2: Afficher le formulaire de connexion
+    Utilisateur->>IHM: 3: Saisir email et mot de passe
+
+    IHM->>CTRL: 3.1: POST /api/auth/login (email, mot_de_passe)
+    CTRL->>SRV: 3.1.1: Rechercher l'utilisateur
+    SRV->>BD: 3.1.2: SELECT * FROM utilisateur WHERE email = ?
+    BD-->>SRV: 3.1.3: Résultat
+
+    alt Utilisateur non trouvé
+        SRV-->>CTRL: 3.1.4: Erreur "Email inconnu"
+        CTRL-->>IHM: 3.1.4.1: Statut 401
+        IHM-->>Utilisateur: 3.1.4.2: Afficher "Identifiants incorrects"
+    end
+
+    SRV->>SRV: 3.1.5: Comparer mot de passe (bcrypt.compare)
+
+    alt Mot de passe incorrect
+        SRV-->>CTRL: 3.1.6: Erreur "Mot de passe invalide"
+        CTRL-->>IHM: 3.1.6.1: Statut 401
+        IHM-->>Utilisateur: 3.1.6.2: Afficher "Identifiants incorrects"
+    end
+
+    SRV-->>CTRL: 3.1.7: Authentification réussie
+    CTRL-->>IHM: 3.1.8: Réponse JSON (token, user, type_compte)
+    IHM->>IHM: 4: Stocker la session (localStorage)
+    IHM-->>Utilisateur: 5: Redirection selon le rôle (Dashboard / Catalogue)
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Se connecter ».</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- SPRINT 2 : Passer une commande (avec Escrow + Paiement)      -->
+<!-- ============================================================ -->
+<div class="page" id="sprint2">
+<h2>6.3.3 Diagramme de séquence d'application du Sprint 2</h2>
+<p class="desc">Pour ce sprint, nous représentons le diagramme de séquence d'application du cas d'utilisation « Passer une commande ». Le système intègre un mécanisme Escrow (séquestre) : le client paie, les fonds sont bloqués, puis libérés progressivement au tailleur à chaque étape validée par photo preuve.</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Client
+    participant IHM as IHM_CataloguePage
+    participant CMD as IHM_CommandePage
+    participant PAY as IHM_PaiementModal
+    participant CTRL_C as CTRL_Commandes
+    participant SRV as SERVICE_Escrow
+    participant BD as Base de données
+    actor Tailleur
+
+    Client->>IHM: 1: Parcourir le catalogue et sélectionner un modèle
+    Client->>IHM: 2: Cliquer sur "Commander"
+    IHM->>CMD: 2.1: Naviguer vers CommandePage (modèle + tailleur)
+
+    Note over CMD: Formulaire : tissu, couleur, notes
+    Note over CMD: Affichage : prix, commission 15%, part tailleur 85%
+    Client->>CMD: 3: Confirmer la commande
+
+    CMD->>CTRL_C: 3.1: POST /api/commandes (client_id, tailleur_id, modele_id, prix)
+    CTRL_C->>BD: 3.1.1: INSERT INTO commande (statut='en_attente_acceptation')
+    CTRL_C->>BD: 3.1.2: INSERT INTO statut_commande (log initial)
+    BD-->>CTRL_C: 3.1.3: Commande créée (id)
+    CTRL_C-->>CMD: 3.2: Confirmation JSON
+    CMD-->>Client: 4: "Commande envoyée — en attente d'acceptation"
+
+    Note over Tailleur: Le tailleur reçoit la commande
+    Tailleur->>CMD: 5: Accepter la commande
+    CMD->>CTRL_C: 5.1: PATCH /commandes/:id/statut (statut='acceptee')
+    CTRL_C->>BD: 5.1.1: UPDATE commande SET statut='acceptee'
+    CTRL_C-->>CMD: 5.2: Confirmation
+
+    Note over Client: Le client doit payer avant que le tailleur ne commence
+    Client->>CMD: 6: Cliquer sur "Payer"
+    CMD->>PAY: 6.1: Ouvrir PaiementModal (montant, modes)
+
+    Client->>PAY: 7: Choisir mode (par étape / après livraison) + méthode (Mobile Money / Carte)
+    PAY->>CTRL_C: 7.1: POST /api/paiements (commande_id, montant, méthode, mode)
+    CTRL_C->>SRV: 7.1.1: Créer le séquestre Escrow
+    SRV->>BD: 7.1.2: INSERT INTO paiement (statut='valide', montant_bloque)
+    SRV->>SRV: 7.1.3: Calculer commission FITMOD (15%) et part tailleur (85%)
+    BD-->>SRV: 7.1.4: Paiement enregistré
+    SRV-->>CTRL_C: 7.2: Escrow créé
+    CTRL_C-->>PAY: 7.3: Paiement confirmé
+    PAY-->>Client: 8: "Paiement validé — fonds en séquestre"
+
+    Note over Tailleur: Le tailleur commence la confection
+    loop Chaque étape de production
+        Tailleur->>CMD: 9: Avancer au statut suivant
+        CMD->>CMD: 9.1: Ouvrir modal "Photo preuve obligatoire"
+        Tailleur->>CMD: 9.2: Prendre/choisir photo + commentaire
+        CMD->>CTRL_C: 9.3: PATCH /commandes/:id/statut (statut, photo preuve)
+        CTRL_C->>BD: 9.3.1: UPDATE commande SET statut
+        CTRL_C->>BD: 9.3.2: INSERT INTO preuve (photo_url, commentaire)
+        CTRL_C->>SRV: 9.3.3: Libérer le pourcentage correspondant
+        SRV->>BD: 9.3.4: UPDATE paiement (montant_libere += %)
+        SRV-->>CTRL_C: 9.4: Versement effectué
+        CTRL_C-->>CMD: 9.5: Statut + progression mis à jour
+    end
+
+    Note over CMD: Étapes : Couture(45%) → Finitions(25%) → Prêt(15%) → Livré(15%)
+
+    Tailleur->>CMD: 10: Marquer "Livré" (100% libéré)
+    CMD-->>Client: 11: "Commande livrée — vous pouvez laisser un avis"
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Passer une commande » (avec Escrow et photo preuve).</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- SPRINT 3a : Prise de mesures automatique                     -->
+<!-- ============================================================ -->
+<div class="page" id="sprint3a">
+<h2>6.3.4 Diagramme de séquence d'application du Sprint 3</h2>
+<p class="desc">Cas d'utilisation « Prendre ses mesures via la webcam ».</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Client
+    participant IHM as IHM_CabineEssayage
+    participant IA as MODULE_MediaPipe
+    participant CALC as SERVICE_Calculateur
+    participant CTRL as CTRL_ClientProfil
+    participant BD as Base de données
+
+    Client->>IHM: 1: Accéder à la Cabine d'Essayage
+    IHM-->>Client: 2: Afficher l'interface webcam
+    Client->>IHM: 3: Autoriser l'accès à la caméra
+
+    IHM->>IA: 3.1: Initialiser MediaPipe Pose
+    IA-->>IHM: 3.2: Modèle IA chargé et prêt
+
+    Client->>IHM: 4: Se positionner devant la webcam
+    IHM->>IA: 4.1: Envoyer le flux vidéo (frame par frame)
+    IA-->>IHM: 4.2: Retourner les 33 points d'articulation (landmarks)
+
+    IHM->>CALC: 4.3: Calculer les mensurations (landmarks + taille réelle)
+    CALC->>CALC: 4.3.1: Calculer tour de poitrine
+    CALC->>CALC: 4.3.2: Calculer tour de taille
+    CALC->>CALC: 4.3.3: Calculer tour de hanches
+    CALC->>CALC: 4.3.4: Calculer longueur des bras
+    CALC->>CALC: 4.3.5: Calculer entrejambe
+    CALC-->>IHM: 4.4: Retourner l'objet mensurations
+
+    IHM-->>Client: 5: Afficher les mesures calculées
+    Client->>IHM: 6: Confirmer et sauvegarder
+
+    IHM->>CTRL: 6.1: PUT /api/mesures (utilisateur_id, mesures JSON)
+    CTRL->>BD: 6.1.1: INSERT/UPDATE mesure (poitrine, taille, hanches...)
+    BD-->>CTRL: 6.1.2: Mesure enregistrée
+    CTRL-->>IHM: 6.2: Confirmation sauvegarde
+    IHM-->>Client: 7: Afficher "Mesures enregistrées avec succès"
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Prendre ses mesures via webcam ».</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- SPRINT 3b : Messagerie                                        -->
+<!-- ============================================================ -->
+<div class="page" id="sprint3b">
+<h2>6.3.5 Diagramme de séquence d'application du Sprint 3 (suite)</h2>
+<p class="desc">Cas d'utilisation « Envoyer un message (texte ou vocal) ».</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Client
+    participant IHM as IHM_ChatPage
+    participant WS as Socket.IO
+    participant CTRL as CTRL_Chat
+    participant BD as Base de données
+    participant IHM_T as IHM_ChatPage (Tailleur)
+    actor Tailleur
+
+    Client->>IHM: 1: Ouvrir la messagerie
+    IHM->>CTRL: 1.1: GET /api/chat/conversations
+    CTRL->>BD: 1.1.1: SELECT conversations du client
+    BD-->>CTRL: 1.1.2: Liste des conversations
+    CTRL-->>IHM: 1.2: Retourner les conversations
+    IHM-->>Client: 2: Afficher la liste des discussions
+
+    Client->>IHM: 3: Sélectionner une conversation
+    IHM->>CTRL: 3.1: GET /api/chat/messages/:conversationId
+    CTRL->>BD: 3.1.1: SELECT messages de la conversation
+    BD-->>CTRL: 3.1.2: Historique des messages
+    CTRL-->>IHM: 3.2: Retourner les messages
+    IHM->>WS: 3.3: Rejoindre la room (join_conversation)
+    IHM-->>Client: 4: Afficher l'historique
+
+    Client->>IHM: 5: Rédiger et envoyer un message
+    IHM->>CTRL: 5.1: POST /api/chat/messages (type=TEXT, contenu)
+    CTRL->>BD: 5.1.1: INSERT INTO message
+    BD-->>CTRL: 5.1.2: Message enregistré
+    CTRL->>WS: 5.1.3: Émettre événement "nouveau_message"
+    CTRL-->>IHM: 5.2: Confirmation
+
+    WS-->>IHM_T: 5.3: Réception temps réel du message
+    IHM_T-->>Tailleur: 6: Afficher le nouveau message instantanément
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Envoyer un message ».</p>
+</div>
+
+<hr>
+
+<!-- ============================================================ -->
+<!-- SPRINT 4 : Cabine d'essayage virtuelle (IDM-VTON)            -->
+<!-- ============================================================ -->
+<div class="page" id="sprint4">
+<h2>6.3.6 Diagramme de séquence d'application du Sprint 4</h2>
+<p class="desc">Cas d'utilisation « Essayer un modèle en cabine virtuelle ». L'essayage utilise une IA générative (IDM-VTON via Hugging Face) : le client se prend en photo, choisit un vêtement, et l'IA génère une image ultra-réaliste du client portant le vêtement.</p>
+<div class="mermaid">
+sequenceDiagram
+    actor Client
+    participant IHM as IHM_CabineEssayage
+    participant IA as MODULE_MediaPipe
+    participant PROXY as Backend_Proxy
+    participant HF as Hugging_Face_IDM_VTON
+    participant BD as Base de données
+
+    Client->>IHM: 1: Accéder à la Cabine d'Essayage Virtuelle
+    IHM-->>Client: 2: Afficher le catalogue de vêtements (sidebar)
+    Client->>IHM: 3: Sélectionner un vêtement
+
+    Client->>IHM: 4: Cliquer sur "Commencer l'essayage"
+    IHM->>IHM: 4.1: Activer la webcam (getUserMedia)
+
+    IHM->>IA: 4.2: Initialiser PoseLandmarker (MediaPipe)
+    IA-->>IHM: 4.3: Modèle de détection chargé
+
+    loop Détection en temps réel
+        IHM->>IA: 5: Envoyer frame vidéo
+        IA-->>IHM: 5.1: Retourner landmarks (33 points)
+        IHM->>IHM: 5.2: Vérifier : épaules + hanches visibles + centré ?
+
+        alt Corps non détecté
+            IHM-->>Client: 5.3a: "Placez-vous devant la caméra"
+        else Corps partiel
+            IHM-->>Client: 5.3b: "Reculez pour inclure vos hanches"
+        else Corps détecté et centré
+            IHM-->>Client: 5.3c: "Corps détecté — restez immobile..."
+        end
+    end
+
+    Note over IHM: Après 1.5s de stabilité → Countdown automatique
+    IHM-->>Client: 6: Countdown 3... 2... 1...
+    IHM->>IHM: 6.1: Capturer la photo (canvas 768x1024)
+    IHM->>IHM: 6.2: Arrêter la webcam
+    IHM-->>Client: 7: Afficher la photo en preview
+
+    Client->>IHM: 8: Cliquer sur "Essayer le vêtement"
+
+    IHM->>PROXY: 8.1: POST /api/vton/upload (photo du client)
+    PROXY->>HF: 8.1.1: Upload vers Gradio (Hugging Face)
+    HF-->>PROXY: 8.1.2: FileData (chemin fichier)
+    PROXY-->>IHM: 8.2: Référence photo uploadée
+
+    IHM->>PROXY: 8.3: POST /api/vton/upload (image du vêtement)
+    PROXY->>HF: 8.3.1: Upload vers Gradio
+    HF-->>PROXY: 8.3.2: FileData (chemin fichier)
+    PROXY-->>IHM: 8.4: Référence vêtement uploadée
+
+    IHM->>PROXY: 9: POST /api/vton/predict (photo, vêtement, seed)
+    PROXY->>HF: 9.1: Appel IDM-VTON API (fn_index=2)
+    Note over HF: Génération IA (~30 secondes)
+    HF-->>PROXY: 9.2: Image résultat générée
+    PROXY-->>IHM: 9.3: URL de l'image résultat
+
+    IHM-->>Client: 10: Afficher côte à côte : "Avant" | "Avec le vêtement"
+
+    alt Le client est satisfait
+        Client->>IHM: 11a: Cliquer sur "Commander ce modèle"
+        IHM-->>Client: 11a.1: Redirection vers CommandePage
+    else Le client veut réessayer
+        Client->>IHM: 11b: "Nouvelle photo" ou "Essayer un autre vêtement"
+        IHM->>IHM: 11b.1: Retourner à la phase caméra ou preview
+    end
+</div>
+<p class="figure">Figure : Diagramme de séquence du cas d'utilisation « Essayer un modèle en cabine virtuelle » (IA générative IDM-VTON).</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+.admin-card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 30px;
+    padding: 10px;
+}
+
+.premium-3d-card {
+    background: var(--color-bg-card, #ffffff);
+    border: 3px solid var(--color-border, #e5e5e5);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 6px 6px 0px var(--color-accent-choco, #4A2E1B); /* Modified explicitly based on user feedback */
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    cursor: pointer;
+}
+
+.premium-3d-card:hover {
+    top: -5px;
+    box-shadow: 12px 12px 0px var(--color-accent-choco, #4A2E1B);
+    border-color: var(--color-accent-choco, #2c1a12);
+}
+
+.premium-3d-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--color-border-light, #f0f0f0);
+    padding-bottom: 12px;
+}
+
+.premium-3d-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.premium-3d-card .card-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 2px dotted var(--color-border, #e5e5e5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-badge {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 2px solid;
+}
+
+.badge-success { background: #d1fae5; color: #065f46; border-color: #10b981; }
+.badge-warning { background: #fef3c7; color: #92400e; border-color: #f59e0b; }
+.badge-info { background: #e0f2fe; color: #075985; border-color: #0ea5e9; }
+.badge-neutral { background: var(--color-bg-base, #f9f9f9); color: var(--color-text-main, #333); border-color: var(--color-border, #e5e5e5); }
+
+.admin-select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 3px solid var(--color-border, #e5e5e5);
+    font-weight: bold;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    appearance: none;
+    outline: none;
+}
+.admin-select:hover {
+    border-color: var(--color-bg-inverse, #2c1a12);
+}
+
+/* Chat Block specific animations */
+.chat-block-left {
+    animation: slideInLeft 0.5s ease-out forwards;
+}
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}

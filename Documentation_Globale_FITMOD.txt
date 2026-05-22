@@ -1,0 +1,89 @@
+====================================================================
+               FITMOD - DOCUMENTATION GLOBALE DE LA PLATEFORME
+====================================================================
+
+1. CONCEPT DE LA PLATEFORME
+--------------------------------------------------------------------
+FITMOD est une plateforme innovante de mise en relation entre des clients et des artisans tailleurs professionnels. Elle digitalise et simplifie le processus de confection sur-mesure en intégrant des technologies modernes comme la prise de mesures virtuelle par IA (via webcam), la géolocalisation pour trouver des ateliers de proximité, et un système de messagerie en temps réel.
+
+
+2. LES ACTEURS (ROLES) ET CE QU'ILS FONT
+--------------------------------------------------------------------
+- CLIENT : 
+  * Parcourt le catalogue de modèles et recherche des tailleurs autour de chez lui.
+  * Utilise la cabine d'essayage virtuelle (Webcam + MediaPipe) pour extraire ses mensurations ou les entrer manuellement.
+  * Passe des commandes en envoyant automatiquement ses mensurations au tailleur sélectionné.
+  * Communique avec le tailleur via chat textuel ou messages vocaux.
+  * Suit le statut de ses commandes.
+
+- TAILLEUR (Artisan) : 
+  * Possède un tableau de bord professionnel pour gérer sa vitrine virtuelle.
+  * Expose ses modèles avec tarifs, détails et poste des photos de ses anciennes réalisations dans un Portfolio.
+  * Marque sa position GPS pour que les clients le trouvent via la recherche "Autour de moi".
+  * Reçoit, accepte ou refuse les commandes (et récupère les mensurations exactes des clients).
+  * Communique directement avec ses clients dans le Chat en temps réel.
+
+- ADMINISTRATEUR : 
+  * Valide l'inscription des tailleurs pour garantir le professionnalisme de la plateforme.
+  * Supervise les statistiques globales, gère les litiges et les modérations.
+
+
+3. FONCTIONNALITÉS PRINCIPALES
+--------------------------------------------------------------------
+* Cabine d'essayage virtuelle : Utilisation de l'IA (MediaPipe) pour détecter les articulations via la webcam du client et calculer ses mesures (poitrine, taille, longueur des bras, etc.).
+* Recherche & Géolocalisation : Algorithme avec Formule de Haversine pour trier les tailleurs selon la distance kilométrique exacte depuis la position GPS du client.
+* Messagerie (WhatsApp-style) : Chat temps-réel via Socket.IO, supportant l'envoi de messages texte et l'enregistrement de mémos vocaux en direct depuis le navigateur.
+* Suivi de Commandes : Cycle complet (En attente, Acceptée, En confection, Prête, Livrée).
+* Portfolio & Avis : Galerie vitrine du savoir-faire du tailleur.
+
+
+4. ARCHITECTURE TECHNIQUE
+--------------------------------------------------------------------
+* FRONTEND : React.js (Vite), Interface Glassmorphism (design moderne "verre flouté" chocolat/crème).
+* BACKEND : Node.js avec Express.js.
+* TEMPS RÉEL : Socket.IO (WebSockets).
+* INTELLIGENCE ARTIFICIELLE : TensorFlow.js & MediaPipe (Pose Detection).
+* STOCKAGE DE DONNÉES : Base de données relationnelle MySQL.
+* UPLOADS : Multer gère le stockage local des images de modèles et des enregistrements audio (WebM).
+
+
+5. STRUCTURE DE LA BASE DE DONNÉES (LES TABLES)
+--------------------------------------------------------------------
+Les entités principales (fitmod_db) :
+* utilisateur : Table centrale gérant d'authentification (nom, prenoms, email, mot de passe hashé, ville, rôle : client/tailleur/admin).
+* client : Liée à l'utilisateur, stocke principalement les mensurations complexes de l'utilisateur (poitrine, hanches, taille).
+* tailleur : Profil professionnel étendu (nom atelier, adresse, quartier, spécialités, statut, validation admin, latitude, longitude pour la géolocalisation).
+* modele : Créations du tailleur (titre, prix, description, photo_url, type_tenue).
+* commande : Lie un Client, un Tailleur et un Modèle. Stocke les mensurations figées au moment de la commande et le statut.
+* portfolio : Galerie photo annexe pour les réalisations du tailleur.
+* avis : Stocke les notes/étoiles données par des clients après une commande.
+* conversation : Crée les "pièces" (rooms) uniques regroupant un tailleur et un client pour la messagerie.
+* message : Les contenus discutés (texte ou AUDIO blob url), liés à la table conversation.
+
+
+6. COMPOSANTS FRONTEND PRINCIPAUX (ARCHITECTURE REACT)
+--------------------------------------------------------------------
+* App.jsx : Point d'entrée, gère le routage simplifiée et le contexte utilisateur (AuthContext).
+* AuthPage.jsx : Inscription et connexion (formulaires séparés Client/Tailleur).
+* CataloguePage.jsx : Moteur de recherche de modèles et tailleurs, inclut le filtre GPS (Autour de moi).
+* CabineEssayage.jsx : L'interface complexe activant la webcam et exécutant l'IA mediapipe-wrapper.js pour la capture.
+* TailleurDashboard.jsx : Console d'administration du tailleur.
+* ChatPage.jsx : L'interface de discussion divisée en 2 (liste des discussions à gauche, chat et enregistreur vocal à droite).
+* CommandePage.jsx / MesCommandesPage.jsx : Les interfaces gérant le passage ou le suivi de processus de livraison.
+* AdminPage.jsx : Le tableau de modération global CMS.
+
+
+7. ARCHITECTURE BACKEND (LES ROUTES EXPRESS)
+--------------------------------------------------------------------
+* authRoutes.js : Inscription, Hashage BCRYPT et Génération de session logicielle.
+* tailleursRoutes.js : CRUD (Upload de portfolios/modèles) de la vitrine, et calcul SQL de proximité (Haversine distance).
+* commandeRoutes.js : Workflow (Workflow state machine : attente -> creation -> finition).
+* chatRoutes.js : Récupération des historiques textuels et téléchargement (Upload de fichiers .webm multiformats via Multer) des messages audio vocaux.
+* adminRoutes.js : Statut de modération des comptes (validation).
+* server.js : Démarre le serveur API HTTP et orchestre les événements Socket.IO (`join_conversation`, `typing`, `nouveau_message`).
+
+
+====================================================================
+Ce document synthétise l'architecture et les responsabilités du code
+source existant déployé sur le projet local FITMOD.
+====================================================================

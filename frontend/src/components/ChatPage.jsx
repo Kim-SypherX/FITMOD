@@ -53,6 +53,7 @@ export default function ChatPage({ chatContext, onNavigate }) {
 
         socket.on('connect', () => {
             console.log('Connecté au serveur de chat');
+            if (user?.id) socket.emit('register_user', user.id);
         });
 
         socket.on('new_message', (msg) => {
@@ -137,6 +138,19 @@ export default function ChatPage({ chatContext, onNavigate }) {
     }, []);
 
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+    // Système de fallback (auto-refresh)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadConversations();
+            if (selectedPartner) {
+                api.get(`/chat/messages/${user.id}/${selectedPartner.partner_id}`)
+                   .then(history => setMessages(history))
+                   .catch(console.error);
+            }
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [selectedPartner]);
 
     // ─── Envoi Textuel ───
     const sendMessage = async (e) => {

@@ -16,7 +16,7 @@ export default function FavorisPage({ onNavigate }) {
     const [avisForm, setAvisForm] = useState({ commande_id: null, note: 5, commentaire: '' });
 
     useEffect(() => {
-        if (user?.type_compte === 'client' && user?.client?.id) {
+        if ((user?.type_compte === 'client' || user?.type_compte === 'tailleur') && user?.client?.id) {
             loadFavoris();
             loadCommandesSansAvis();
         } else {
@@ -79,7 +79,7 @@ export default function FavorisPage({ onNavigate }) {
         }
     };
 
-    if (user?.type_compte !== 'client') {
+    if (user?.type_compte !== 'client' && user?.type_compte !== 'tailleur') {
         return (
             <div className="page-container">
                 <div className="empty-state">
