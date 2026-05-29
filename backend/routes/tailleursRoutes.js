@@ -74,11 +74,10 @@ router.get('/:id', async (req, res) => {
         const [avis] = await pool.query(`
       SELECT a.*, u.nom as client_nom, u.prenom as client_prenom
       FROM avis a
-      JOIN client c ON a.client_id = c.id
-      JOIN utilisateur u ON c.utilisateur_id = u.id
+      JOIN utilisateur u ON a.client_id = u.id
       WHERE a.tailleur_id = ?
       ORDER BY a.date_avis DESC
-    `, [tailleur.id]);
+    `, [tailleur.utilisateur_id]);
         tailleur.avis = avis;
 
         res.json(tailleur);
@@ -120,12 +119,12 @@ router.get('/:id/modeles', async (req, res) => {
 // POST /api/tailleurs/:id/modeles — Créer un modèle
 router.post('/:id/modeles', (req, res, next) => { req.uploadType = 'modeles'; next(); }, upload.single('photo'), async (req, res) => {
     try {
-        const { titre, description, type_tenue, prix_base, delai_confection, couleurs_disponibles } = req.body;
+        const { titre, description, type_tenue, prix_base, delai_confection, couleurs_disponibles, tissu_disponible, prix_tissu } = req.body;
         const photo_url = req.file ? `/uploads/modeles/${req.file.filename}` : null;
 
         const [result] = await pool.query(
-            'INSERT INTO modele (tailleur_id, titre, description, type_tenue, photo_url, prix_base, delai_confection, couleurs_disponibles) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [req.params.id, titre, description, type_tenue, photo_url, prix_base || 0, delai_confection || null, couleurs_disponibles || null]
+            'INSERT INTO modele (tailleur_id, titre, description, type_tenue, photo_url, prix_base, tissu_disponible, prix_tissu, delai_confection, couleurs_disponibles) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.params.id, titre, description, type_tenue, photo_url, prix_base || 0, tissu_disponible ? 1 : 0, tissu_disponible ? (prix_tissu || null) : null, delai_confection || null, couleurs_disponibles || null]
         );
         res.status(201).json({ id: result.insertId, photo_url });
     } catch (err) {
@@ -137,9 +136,10 @@ router.post('/:id/modeles', (req, res, next) => { req.uploadType = 'modeles'; ne
 // PUT /api/tailleurs/modeles/:modeleId
 router.put('/modeles/:modeleId', (req, res, next) => { req.uploadType = 'modeles'; next(); }, upload.single('photo'), async (req, res) => {
     try {
-        const { titre, description, type_tenue, prix_base, delai_confection, couleurs_disponibles, actif } = req.body;
-        let sql = 'UPDATE modele SET titre=?, description=?, type_tenue=?, prix_base=?, delai_confection=?, couleurs_disponibles=?, actif=?';
-        const params = [titre, description, type_tenue, prix_base, delai_confection, couleurs_disponibles, actif ?? 1];
+        const { titre, description, type_tenue, prix_base, delai_confection, couleurs_disponibles, actif, tissu_disponible, prix_tissu } = req.body;
+        let sql = 'UPDATE modele SET titre=?, description=?, type_tenue=?, prix_base=?, tissu_disponible=?, prix_tissu=?, delai_confection=?, couleurs_disponibles=?, actif=?';
+        const hasTissu = tissu_disponible === '1' || tissu_disponible === 'true' || tissu_disponible === true;
+        const params = [titre, description, type_tenue, prix_base, hasTissu ? 1 : 0, hasTissu ? (prix_tissu || null) : null, delai_confection, couleurs_disponibles, actif ?? 1];
 
         if (req.file) {
             sql += ', photo_url=?';

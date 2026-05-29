@@ -209,7 +209,9 @@ export default function TailleurDashboard() {
                                         <p style={{ color: 'var(--color-text-muted)', margin: '0 0 8px', fontSize: '13px', lineHeight: '1.4' }}>{m.description || 'Pas de description'}</p>
                                         <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '12px', flexWrap: 'wrap' }}>
                                             <span style={{ background: 'rgba(139,94,60,0.08)', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>{m.type_tenue}</span>
-                                            {m.prix_base > 0 && <span style={{ background: 'rgba(139,94,60,0.08)', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>{Number(m.prix_base).toLocaleString()} F</span>}
+                                            {m.prix_base > 0 && <span style={{ background: 'rgba(139,94,60,0.08)', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>Confection: {Number(m.prix_base).toLocaleString()} F</span>}
+                                            {Number(m.tissu_disponible) === 1 && m.prix_tissu && <span style={{ background: 'rgba(22,163,74,0.1)', color: '#16a34a', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>🧵 +Tissu: {Number(m.prix_tissu).toLocaleString()} F</span>}
+                                            {!Number(m.tissu_disponible) && <span style={{ background: 'rgba(245,158,11,0.1)', color: '#b45309', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>Sans tissu</span>}
                                             {m.delai_confection && <span style={{ background: 'rgba(139,94,60,0.08)', padding: '4px 10px', borderRadius: '8px', fontWeight: '600' }}>{m.delai_confection} jours</span>}
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -571,6 +573,8 @@ const ModelForm = ({ model = null, tailleurId, onClose, onSuccess }) => {
     const [description, setDescription] = useState(model?.description || '');
     const [typeTenue, setTypeTenue] = useState(model?.type_tenue || 'boubou');
     const [prixBase, setPrixBase] = useState(model?.prix_base || '');
+    const [tissuDispo, setTissuDispo] = useState(Number(model?.tissu_disponible) === 1);
+    const [prixTissu, setPrixTissu] = useState(model?.prix_tissu || '');
     const [delai, setDelai] = useState(model?.delai_confection || '');
     const initialCouleurs = Array.isArray(model?.couleurs_disponibles) ? model.couleurs_disponibles.join(', ') : (model?.couleurs_disponibles || '');
     const [couleurs, setCouleurs] = useState(initialCouleurs);
@@ -599,6 +603,8 @@ const ModelForm = ({ model = null, tailleurId, onClose, onSuccess }) => {
         formData.append('description', description);
         formData.append('type_tenue', typeTenue);
         formData.append('prix_base', prixBase || 0);
+        formData.append('tissu_disponible', tissuDispo ? '1' : '0');
+        if (tissuDispo && prixTissu) formData.append('prix_tissu', prixTissu);
         formData.append('delai_confection', delai ? parseInt(delai) : '');
         
         const couleursArray = couleurs ? couleurs.split(',').map(c => c.trim()).filter(Boolean) : [];
@@ -672,7 +678,41 @@ const ModelForm = ({ model = null, tailleurId, onClose, onSuccess }) => {
                                 <option value="autre">Autre</option>
                             </select>
                         </div>
-                        <InputField label="Prix de base (FCFA)" value={prixBase} onChange={setPrixBase} type="number" placeholder="15000" />
+                        <InputField label="Prix confection (FCFA)" value={prixBase} onChange={setPrixBase} type="number" placeholder="15000" />
+                    </div>
+
+                    {/* ── Tissu ── */}
+                    <div style={{ padding: '16px', background: 'rgba(139,94,60,0.04)', borderRadius: '14px', border: '1px solid rgba(139,94,60,0.1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: tissuDispo ? '12px' : 0 }}>
+                            <div
+                                onClick={() => setTissuDispo(!tissuDispo)}
+                                style={{
+                                    width: '46px', height: '26px', borderRadius: '13px', cursor: 'pointer',
+                                    background: tissuDispo ? 'linear-gradient(135deg, var(--color-accent-choco), var(--color-accent-caramel))' : 'rgba(139,94,60,0.15)',
+                                    position: 'relative', transition: 'background 0.3s', flexShrink: 0,
+                                }}
+                            >
+                                <div style={{
+                                    width: '22px', height: '22px', borderRadius: '50%', background: '#fff',
+                                    position: 'absolute', top: '2px', left: tissuDispo ? '22px' : '2px',
+                                    transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                }} />
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: '700', fontSize: '14px' }}>🧵 Je fournis le tissu</div>
+                                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                                    {tissuDispo ? 'Le client pourra choisir votre tissu' : 'Le client devra apporter son propre tissu'}
+                                </div>
+                            </div>
+                        </div>
+                        {tissuDispo && (
+                            <InputField label="Prix du tissu (FCFA)" value={prixTissu} onChange={setPrixTissu} type="number" placeholder="Ex: 10000" />
+                        )}
+                        {tissuDispo && prixBase && prixTissu && (
+                            <div style={{ marginTop: '8px', padding: '10px 14px', background: 'rgba(22,163,74,0.08)', borderRadius: '10px', fontSize: '13px', color: '#16a34a', fontWeight: '600' }}>
+                                Prix total avec tissu : {(Number(prixBase) + Number(prixTissu)).toLocaleString()} FCFA
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

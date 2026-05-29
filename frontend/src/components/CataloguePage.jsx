@@ -197,9 +197,21 @@ export default function CataloguePage({ onNavigate, initialContext, onRequireAut
                             <p className="detail-desc">{selectedModele.description || 'Aucune description fournie.'}</p>
                             <div className="detail-meta">
                                 <div className="meta-chip price-chip">
-                                    <span className="meta-label">Prix</span>
+                                    <span className="meta-label">Confection</span>
                                     <span className="meta-value">{Number(selectedModele.prix_base).toLocaleString()} FCFA</span>
                                 </div>
+                                {Number(selectedModele.tissu_disponible) === 1 && selectedModele.prix_tissu && (
+                                    <div className="meta-chip" style={{ background: 'rgba(22,163,74,0.1)', borderColor: 'rgba(22,163,74,0.2)' }}>
+                                        <span className="meta-label" style={{ color: '#16a34a' }}>🧵 Avec tissu</span>
+                                        <span className="meta-value" style={{ color: '#16a34a' }}>{(Number(selectedModele.prix_base) + Number(selectedModele.prix_tissu)).toLocaleString()} FCFA</span>
+                                    </div>
+                                )}
+                                {!Number(selectedModele.tissu_disponible) && (
+                                    <div className="meta-chip" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.2)' }}>
+                                        <span className="meta-label" style={{ color: '#b45309' }}>Tissu</span>
+                                        <span className="meta-value" style={{ color: '#b45309', fontSize: '12px' }}>À fournir par le client</span>
+                                    </div>
+                                )}
                                 <div className="meta-chip">
                                     <span className="meta-label">Délai</span>
                                     <span className="meta-value">{selectedModele.delai_confection || '—'} jours</span>
@@ -303,10 +315,52 @@ export default function CataloguePage({ onNavigate, initialContext, onRequireAut
                                 <div className="card-body">
                                     <h4>{m.titre}</h4>
                                     <span className="card-price">{Number(m.prix_base).toLocaleString()} FCFA</span>
+                                    {Number(m.tissu_disponible) === 1 && <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600' }}>🧵 Tissu dispo</span>}
                                 </div>
                             </div>
                         ))}
                     </div>
+
+                    {/* ══ AVIS CLIENTS ══ */}
+                    {t.avis && t.avis.length > 0 && (
+                        <>
+                            <h3 className="section-heading">Avis Clients <span className="count">({t.avis.length})</span></h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {t.avis.map(a => (
+                                    <div key={a.id} style={{
+                                        padding: '16px 20px', borderRadius: 14,
+                                        background: 'rgba(139,94,60,0.03)',
+                                        border: '1px solid rgba(139,94,60,0.08)',
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <span style={{ fontWeight: 700, fontSize: 14 }}>
+                                                {a.client_prenom} {a.client_nom?.charAt(0)}.
+                                            </span>
+                                            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                                {new Date(a.date_avis).toLocaleDateString('fr-FR')}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <span key={s} style={{ fontSize: 16, color: s <= a.note ? '#f59e0b' : 'rgba(0,0,0,0.1)' }}>★</span>
+                                            ))}
+                                        </div>
+                                        {a.commentaire && (
+                                            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-main)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                                                « {a.commentaire} »
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                    {t.avis && t.avis.length === 0 && (
+                        <>
+                            <h3 className="section-heading">Avis Clients</h3>
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Aucun avis pour le moment.</p>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -464,7 +518,10 @@ export default function CataloguePage({ onNavigate, initialContext, onRequireAut
                                         <h4>{m.titre}</h4>
                                         <span className="card-atelier">{m.nom_atelier}</span>
                                         <div className="card-footer">
-                                            <span className="card-price">{Number(m.prix_base).toLocaleString()} FCFA</span>
+                                            <div>
+                                                <span className="card-price">À partir de {Number(m.prix_base).toLocaleString()} FCFA</span>
+                                                {Number(m.tissu_disponible) === 1 && <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600', marginTop: '2px' }}>🧵 Tissu disponible</div>}
+                                            </div>
                                             <button 
                                                 className="card-order-btn" 
                                                 onClick={(e) => { 

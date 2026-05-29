@@ -34,6 +34,9 @@ export default function CommandePage({ commandeContext, onNavigate }) {
     const [preuveComment, setPreuveComment] = useState('');
     const [toast, setToast] = useState(null); // { msg, type: 'success'|'error'|'warn' }
     const [confirmCancel, setConfirmCancel] = useState(false);
+    const [avisNote, setAvisNote] = useState(5);
+    const [avisComment, setAvisComment] = useState('');
+    const [avisSubmitting, setAvisSubmitting] = useState(false);
     const fileInputRef = useRef(null);
     const toastTimerRef = useRef(null);
 
@@ -46,12 +49,20 @@ export default function CommandePage({ commandeContext, onNavigate }) {
     const isNew = commandeContext?.modele != null;
     const initModel = commandeContext?.modele;
     const initTailleur = commandeContext?.tailleur;
-    const [tissu, setTissu] = useState('fourni_par_client');
+    const [tissu, setTissu] = useState('client_fournit');
     const [couleur, setCouleur] = useState('');
     const [notes, setNotes] = useState('');
     const [creating, setCreating] = useState(false);
 
     const isTailleur = user?.type_compte === 'tailleur';
+
+    // Calcul dynamique du prix selon le choix du tissu
+    const hasTissu = initModel && Number(initModel.tissu_disponible) === 1 && initModel.prix_tissu;
+    const prixConfection = initModel ? Number(initModel.prix_base) : 0;
+    const prixTissu = hasTissu ? Number(initModel.prix_tissu) : 0;
+    const prixTotal = tissu === 'tailleur_fournit' && hasTissu ? prixConfection + prixTissu : prixConfection;
+    const commission = Math.round(prixTotal * 0.15);
+    const partTailleur = prixTotal - commission;
 
     useEffect(() => { 
         if (!isNew) {
@@ -92,8 +103,8 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                 client_id: user.id,
                 tailleur_id: initTailleur.utilisateur_id || initTailleur.id,
                 modele_id: initModel.id,
-                tissu_choisi: tissu, couleur,
-                prix_total: initModel.prix_base,
+                tissu_option: tissu,
+                couleur,
                 notes_client: notes,
                 mesures_utilisees: {}
             };
@@ -145,13 +156,33 @@ export default function CommandePage({ commandeContext, onNavigate }) {
         }
     };
 
+    // ── Soumission d'un avis ──
+    const submitAvis = async () => {
+        if (!selectedCmd) return;
+        setAvisSubmitting(true);
+        try {
+            await api.post('/client-profil/avis', {
+                commande_id: selectedCmd.id,
+                client_id: user.id,
+                tailleur_id: selectedCmd.tailleur_id,
+                note: avisNote,
+                commentaire: avisComment,
+            });
+            showToast('Merci pour votre avis ! ⭐', 'success');
+            setAvisComment('');
+            setAvisNote(5);
+            loadDetails(selectedCmd.id);
+        } catch (err) {
+            showToast(err.message || 'Erreur lors de la soumission', 'error');
+        } finally {
+            setAvisSubmitting(false);
+        }
+    };
+
     // ══════════════════════════════════════════════════════
     // RENDU — Nouvelle commande
     // ══════════════════════════════════════════════════════
     if (isNew) {
-        const commission = Math.round(initModel.prix_base * 0.15);
-        const partTailleur = initModel.prix_base - commission;
-
         return (
             <div className="page-container">
                 {/* ── Toast ── */}
@@ -169,32 +200,81 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                     </div>
                 </div>
 
-                {/* Détail prix */}
-                <div style={{ background: 'rgba(139,94,60,0.04)', borderRadius: 12, padding: 16, margin: '12px 0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14 }}>
-                        <span>Prix du modèle</span>
-                        <strong>{Number(initModel.prix_base).toLocaleString()} FCFA</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        <span>Commission FITMOD (15%)</span>
-                        <span>{commission.toLocaleString()} FCFA</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        <span>Part tailleur (85%)</span>
-                        <span>{partTailleur.toLocaleString()} FCFA</span>
-                    </div>
-                </div>
-
                 <div className="modele-detail">
                     <div className="new-commande-form">
+                        {/* ── Choix du tissu ── */}
                         <div className="auth-field">
-                            <label>Fourniture de Tissu</label>
-                            <select value={tissu} onChange={e => setTissu(e.target.value)}>
-                                <option value="fourni_par_client">Je fournis mon propre tissu</option>
-                                <option value="fourni_par_tailleur">Le tailleur fournit le tissu (frais en plus)</option>
-                            </select>
+                            <label style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>🧵 Fourniture du tissu</label>
+                            
+                            {/* Option 1 : Client fournit son tissu */}
+                            <div
+                                onClick={() => setTissu('client_fournit')}
+                                style={{
+                                    padding: '14px 16px', borderRadius: 12, cursor: 'pointer', marginBottom: 8,
+                                    border: tissu === 'client_fournit' ? '2px solid var(--color-accent-choco)' : '1px solid rgba(139,94,60,0.15)',
+                                    background: tissu === 'client_fournit' ? 'rgba(139,94,60,0.06)' : 'rgba(255,255,255,0.8)',
+                                    transition: 'all 0.25s',
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div style={{
+                                            width: 20, height: 20, borderRadius: '50%',
+                                            border: tissu === 'client_fournit' ? '6px solid var(--color-accent-choco)' : '2px solid rgba(139,94,60,0.3)',
+                                            transition: 'all 0.25s',
+                                        }} />
+                                        <span style={{ fontWeight: 600, fontSize: 14 }}>J'apporte mon propre tissu</span>
+                                    </div>
+                                    <strong style={{ color: 'var(--color-accent-choco)', fontSize: 16 }}>
+                                        {prixConfection.toLocaleString()} FCFA
+                                    </strong>
+                                </div>
+                                <div style={{ marginLeft: 30, fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                    Prix de la confection uniquement
+                                </div>
+                            </div>
+
+                            {/* Option 2 : Tailleur fournit le tissu */}
+                            {hasTissu ? (
+                                <div
+                                    onClick={() => setTissu('tailleur_fournit')}
+                                    style={{
+                                        padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
+                                        border: tissu === 'tailleur_fournit' ? '2px solid #16a34a' : '1px solid rgba(139,94,60,0.15)',
+                                        background: tissu === 'tailleur_fournit' ? 'rgba(22,163,74,0.06)' : 'rgba(255,255,255,0.8)',
+                                        transition: 'all 0.25s',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{
+                                                width: 20, height: 20, borderRadius: '50%',
+                                                border: tissu === 'tailleur_fournit' ? '6px solid #16a34a' : '2px solid rgba(139,94,60,0.3)',
+                                                transition: 'all 0.25s',
+                                            }} />
+                                            <span style={{ fontWeight: 600, fontSize: 14 }}>🧵 Le tailleur fournit le tissu</span>
+                                        </div>
+                                        <strong style={{ color: '#16a34a', fontSize: 16 }}>
+                                            {(prixConfection + prixTissu).toLocaleString()} FCFA
+                                        </strong>
+                                    </div>
+                                    <div style={{ marginLeft: 30, fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                                        Confection ({prixConfection.toLocaleString()}) + Tissu ({prixTissu.toLocaleString()})
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{
+                                    padding: '12px 16px', borderRadius: 12, fontSize: 13,
+                                    background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+                                    color: '#b45309',
+                                }}>
+                                    ⚠️ Ce tailleur ne fournit pas de tissu pour ce modèle — apportez votre propre tissu.
+                                </div>
+                            )}
                         </div>
-                        {tissu === 'fourni_par_tailleur' && (
+
+                        {/* Couleur (si tailleur fournit le tissu) */}
+                        {tissu === 'tailleur_fournit' && (
                             <div className="auth-field">
                                 <label>Couleur souhaitée</label>
                                 <input value={couleur} onChange={e => setCouleur(e.target.value)} placeholder="Bleu, rouge..." />
@@ -205,9 +285,38 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="3" placeholder="Ajustements..." />
                         </div>
                     </div>
+
+                    {/* Détail prix */}
+                    <div style={{ background: 'rgba(139,94,60,0.04)', borderRadius: 12, padding: 16, margin: '12px 0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14 }}>
+                            <span>Confection</span>
+                            <span>{prixConfection.toLocaleString()} FCFA</span>
+                        </div>
+                        {tissu === 'tailleur_fournit' && hasTissu && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 14, color: '#16a34a' }}>
+                                <span>🧵 Tissu</span>
+                                <span>+{prixTissu.toLocaleString()} FCFA</span>
+                            </div>
+                        )}
+                        <div style={{ borderTop: '1px solid rgba(139,94,60,0.1)', paddingTop: 8, marginTop: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700 }}>
+                                <span>Prix total</span>
+                                <strong>{prixTotal.toLocaleString()} FCFA</strong>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6 }}>
+                            <span>Commission FITMOD (15%)</span>
+                            <span>{commission.toLocaleString()} FCFA</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                            <span>Part tailleur (85%)</span>
+                            <span>{partTailleur.toLocaleString()} FCFA</span>
+                        </div>
+                    </div>
+
                     <div className="commande-actions">
                         <button className="page-btn page-btn-primary" onClick={createCommande} disabled={creating}>
-                            {creating ? 'Création...' : 'Confirmer la Commande'}
+                            {creating ? 'Création...' : `Confirmer — ${prixTotal.toLocaleString()} FCFA`}
                         </button>
                     </div>
                 </div>
@@ -457,7 +566,119 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                     )
                 )}
 
-                {/* ── Modal upload photo preuve ── */}
+                {/* ── Avis — Commande livrée ── */}
+                {c.statut === 'livre' && !isTailleur && (
+                    c.avis ? (
+                        /* Avis déjà laissé — affichage */
+                        <div style={{
+                            marginTop: 16, padding: 20, borderRadius: 16,
+                            background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,94,60,0.04))',
+                            border: '1px solid rgba(245,158,11,0.15)',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <span style={{ fontSize: 18 }}>⭐</span>
+                                <span style={{ fontWeight: 700, fontSize: 15 }}>Votre avis</span>
+                                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                                    {new Date(c.avis.date_avis).toLocaleDateString('fr-FR')}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                                {[1, 2, 3, 4, 5].map(s => (
+                                    <span key={s} style={{ fontSize: 22, color: s <= c.avis.note ? '#f59e0b' : 'rgba(0,0,0,0.1)' }}>★</span>
+                                ))}
+                                <span style={{ marginLeft: 8, fontWeight: 700, color: '#f59e0b' }}>{c.avis.note}/5</span>
+                            </div>
+                            {c.avis.commentaire && (
+                                <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-main)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                                    « {c.avis.commentaire} »
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        /* Formulaire pour laisser un avis */
+                        <div style={{
+                            marginTop: 16, padding: 20, borderRadius: 16,
+                            background: 'rgba(139,94,60,0.04)',
+                            border: '1px solid rgba(139,94,60,0.1)',
+                        }}>
+                            <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700 }}>⭐ Laissez un avis</h3>
+                            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                                Votre commande est livrée ! Partagez votre expérience avec {c.tailleur_nom}.
+                            </p>
+
+                            {/* Étoiles */}
+                            <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setAvisNote(star)}
+                                        style={{
+                                            fontSize: 30, background: 'none', border: 'none', cursor: 'pointer',
+                                            color: avisNote >= star ? '#f59e0b' : 'rgba(0,0,0,0.1)',
+                                            transition: 'transform 0.15s, color 0.2s',
+                                            transform: avisNote >= star ? 'scale(1.15)' : 'scale(1)',
+                                            padding: 0,
+                                        }}
+                                    >
+                                        ★
+                                    </button>
+                                ))}
+                                <span style={{ marginLeft: 8, fontWeight: 700, fontSize: 16, color: '#f59e0b' }}>
+                                    {avisNote}/5
+                                </span>
+                            </div>
+
+                            {/* Commentaire */}
+                            <textarea
+                                value={avisComment}
+                                onChange={e => setAvisComment(e.target.value)}
+                                rows="3"
+                                placeholder="La coupe est parfaite, le tissu de qualité..."
+                                style={{
+                                    width: '100%', borderRadius: 12, border: '1px solid rgba(139,94,60,0.15)',
+                                    padding: 12, fontSize: 14, marginBottom: 12, resize: 'none',
+                                    background: 'rgba(255,255,255,0.8)', outline: 'none',
+                                    fontFamily: 'inherit',
+                                }}
+                            />
+
+                            <button
+                                className="page-btn page-btn-primary"
+                                style={{ width: '100%', padding: 14, fontSize: 15 }}
+                                onClick={submitAvis}
+                                disabled={avisSubmitting || !avisComment.trim()}
+                            >
+                                {avisSubmitting ? 'Publication...' : '⭐ Publier mon avis'}
+                            </button>
+                        </div>
+                    )
+                )}
+
+                {/* Avis affiché pour le tailleur aussi */}
+                {c.statut === 'livre' && isTailleur && c.avis && (
+                    <div style={{
+                        marginTop: 16, padding: 20, borderRadius: 16,
+                        background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,94,60,0.04))',
+                        border: '1px solid rgba(245,158,11,0.15)',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <span style={{ fontSize: 18 }}>⭐</span>
+                            <span style={{ fontWeight: 700, fontSize: 15 }}>Avis du client</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                            {[1, 2, 3, 4, 5].map(s => (
+                                <span key={s} style={{ fontSize: 22, color: s <= c.avis.note ? '#f59e0b' : 'rgba(0,0,0,0.1)' }}>★</span>
+                            ))}
+                            <span style={{ marginLeft: 8, fontWeight: 700, color: '#f59e0b' }}>{c.avis.note}/5</span>
+                        </div>
+                        {c.avis.commentaire && (
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, fontStyle: 'italic' }}>
+                                « {c.avis.commentaire} »
+                            </p>
+                        )}
+                    </div>
+                )}
                 {uploadingStatut && (
                     <div style={{
                         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',

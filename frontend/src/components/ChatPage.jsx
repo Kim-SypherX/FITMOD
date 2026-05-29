@@ -6,18 +6,112 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { io } from 'socket.io-client';
-import { FiSend, FiArrowLeft, FiMic, FiTrash2, FiMessageSquare } from 'react-icons/fi';
+import { FiSend, FiArrowLeft, FiMic, FiTrash2, FiMessageSquare, FiPlay, FiPause, FiEdit2, FiX, FiChevronDown, FiCornerUpLeft, FiCopy, FiInfo, FiSmile } from 'react-icons/fi';
 import '../styles/ChatPage.css';
 
-// Lecteur audio simple
-function AudioMessage({ src }) {
+// Lecteur audio style WhatsApp
+function AudioMessage({ src, msg, isMe, avatarInitial, formatTimeOuter }) {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const audioRef = useRef(null);
+
+    const [waveform] = useState(() => Array.from({length: 34}, () => Math.floor(Math.random() * 60) + 20));
+
+    const togglePlayPause = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+            if (audioRef.current.duration === Infinity) {
+                audioRef.current.currentTime = 1e101;
+                audioRef.current.ontimeupdate = () => {
+                    audioRef.current.ontimeupdate = null;
+                    audioRef.current.currentTime = 0;
+                    setDuration(audioRef.current.duration);
+                };
+            } else {
+                setDuration(audioRef.current.duration);
+            }
+        }
+    };
+
+    const handleTimeUpdate = () => {
+        if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+    };
+
+    const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        if (audioRef.current) audioRef.current.currentTime = 0;
+    };
+
+    const handleSeek = (e) => {
+        if (!audioRef.current || !duration) return;
+        const bounds = e.currentTarget.getBoundingClientRect();
+        const percent = (e.clientX - bounds.left) / bounds.width;
+        audioRef.current.currentTime = percent * duration;
+        setCurrentTime(percent * duration);
+    };
+
+    const formatSeconds = (time) => {
+        if (!time || isNaN(time) || time === Infinity) return "0:00";
+        const m = Math.floor(time / 60);
+        const s = Math.floor(time % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const progressPercent = duration ? (currentTime / duration) * 100 : 0;
+
     return (
-        <audio
-            controls
-            src={api.getUploadUrl(src)}
-            preload="metadata"
-            className="chat-audio"
-        />
+        <div className={`wa-audio-player ${isMe ? 'wa-me' : 'wa-other'}`}>
+            <audio
+                ref={audioRef}
+                src={api.getUploadUrl(src)}
+                onLoadedMetadata={handleLoadedMetadata}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleEnded}
+                preload="metadata"
+            />
+            
+            <button className="wa-play-btn" onClick={togglePlayPause}>
+                {isPlaying ? <FiPause size={24} style={{ fill: 'currentColor' }} /> : <FiPlay size={24} style={{ fill: 'currentColor', marginLeft: 3 }} />}
+            </button>
+
+            <div className="wa-content">
+                <div className="wa-waveform-container" onClick={handleSeek}>
+                    <div className="wa-waveform">
+                        {waveform.map((h, i) => {
+                            const isPassed = (i / 34 * 100) <= progressPercent;
+                            return <div key={i} className={`wa-wave-bar ${isPassed ? 'passed' : ''}`} style={{ height: `${h}%` }}></div>
+                        })}
+                    </div>
+                    <div className="wa-progress-thumb" style={{ left: `${progressPercent}%` }}></div>
+                </div>
+
+                <div className="wa-meta">
+                    <span className="wa-time-left">
+                        {isPlaying || currentTime > 0 ? formatSeconds(currentTime) : formatSeconds(duration)}
+                    </span>
+                    <span className="wa-timestamp">
+                        {formatTimeOuter(msg.date_heure)}
+                        {isMe && <span className="wa-read-status">{msg.lu ? '✓✓' : '✓'}</span>}
+                    </span>
+                </div>
+            </div>
+
+            <div className="wa-avatar-container">
+                <div className="wa-avatar">{avatarInitial}</div>
+                <div className="wa-mic-icon"><FiMic size={10} color="#fff" /></div>
+            </div>
+        </div>
     );
 }
 
@@ -44,6 +138,15 @@ export default function ChatPage({ chatContext, onNavigate }) {
     const inputRef = useRef(null);
 
     // Initialisation
+    const [editModeId, setEditModeId] = useState(null);
+    const [activeMenuId, setActiveMenuId] = useState(null);
+    const [activeMenuPos, setActiveMenuPos] = useState({x: 0, y: 0});
+    const [showEmojiPicker, setShowEmojiPicker] = useState(null);
+    const [replyingTo, setReplyingTo] = useState(null);
+
+    // Emojis array for the picker
+    const EMOJIS = ['😂','🙂','↕️','🫳🏾','🤧','😭','👍🏾','🤌🏾','🫴🏾','😻','👎🏾','🙆🏾‍♂️','🙅🏾‍♂️','🚶🏾','🔥','🎊','🎉','❤️','💔','💙','💯'];
+
     useEffect(() => {
         loadConversations();
 
@@ -81,6 +184,20 @@ export default function ChatPage({ chatContext, onNavigate }) {
 
             // Mettre à jour la liste des conversations dans tous les cas
             loadConversations();
+        });
+
+        socket.on('message_edited', (editedMsg) => {
+            setMessages(prev => prev.map(m => m.id === editedMsg.id ? editedMsg : m));
+            loadConversations();
+        });
+
+        socket.on('message_deleted', ({id}) => {
+            setMessages(prev => prev.map(m => m.id === id ? { ...m, is_deleted: 1 } : m));
+            loadConversations();
+        });
+
+        socket.on('message_reacted', ({id, reactions}) => {
+            setMessages(prev => prev.map(m => m.id === id ? { ...m, reactions } : m));
         });
 
         return () => {
@@ -152,7 +269,7 @@ export default function ChatPage({ chatContext, onNavigate }) {
         return () => clearInterval(interval);
     }, [selectedPartner]);
 
-    // ─── Envoi Textuel ───
+    // ─── Envoi & Actions ───
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!input.trim() || !selectedPartner) return;
@@ -161,16 +278,93 @@ export default function ChatPage({ chatContext, onNavigate }) {
         setInput('');
 
         try {
-            await api.post('/chat/messages', {
-                expediteur_id: user.id,
-                destinataire_id: selectedPartner.partner_id,
-                contenu: msgText,
-                type: 'TEXT'
-            });
-            // Le message sera retourné via Socket.IO -> 'new_message'
+            if (editModeId) {
+                await api.put(`/chat/messages/${editModeId}`, {
+                    expediteur_id: user.id,
+                    contenu: msgText
+                });
+                setEditModeId(null);
+            } else {
+                await api.post('/chat/messages', {
+                    expediteur_id: user.id,
+                    destinataire_id: selectedPartner.partner_id,
+                    contenu: msgText,
+                    type: 'TEXT',
+                    reponse_a_id: replyingTo ? replyingTo.id : null
+                });
+                if (replyingTo) setReplyingTo(null);
+            }
         } catch (err) {
             console.error('Erreur envoi message', err);
-            alert('Échec envoi.');
+            alert(err.response?.data?.error || 'Échec envoi.');
+        }
+    };
+
+    const startEditMessage = (msg) => {
+        setEditModeId(msg.id);
+        setInput(msg.contenu);
+        setActiveMenuId(null);
+        inputRef.current?.focus();
+    };
+
+    const startReply = (msg) => {
+        setReplyingTo(msg);
+        setActiveMenuId(null);
+        inputRef.current?.focus();
+    };
+
+    const handleReaction = async (msgId, emoji) => {
+        try {
+            await api.put(`/chat/messages/${msgId}/react`, { expediteur_id: user.id, emoji });
+            setShowEmojiPicker(null);
+            setActiveMenuId(null);
+        } catch (err) {
+            console.error('Erreur réaction', err);
+        }
+    };
+
+    // Fermer le menu si on clique ailleurs
+    useEffect(() => {
+        const handleClick = (e) => {
+            if (!e.target.closest('.chat-bubble-toggle') && !e.target.closest('.wa-context-menu')) {
+                setActiveMenuId(null);
+                setShowEmojiPicker(null);
+            }
+        };
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, []);
+
+    const toggleMenu = (e, msgId) => {
+        e.stopPropagation();
+        if (activeMenuId === msgId) {
+            setActiveMenuId(null);
+            setShowEmojiPicker(null);
+        } else {
+            setActiveMenuId(msgId);
+            setShowEmojiPicker(null);
+            // Calcul basique de position : le composant se positionne via CSS, mais on peut forcer la vue
+            const rect = e.currentTarget.getBoundingClientRect();
+            setActiveMenuPos({ x: rect.right, y: rect.bottom });
+        }
+    };
+
+    const cancelEditMode = () => {
+        setEditModeId(null);
+        setInput('');
+    };
+
+    const cancelReplyMode = () => {
+        setReplyingTo(null);
+    };
+
+    const deleteMessage = async (msgId) => {
+        if (!window.confirm("Voulez-vous supprimer ce message ?")) return;
+        try {
+            await api.delete(`/chat/messages/${msgId}?expediteur_id=${user.id}`);
+            setActiveMenuId(null);
+        } catch(err) {
+            alert(err.response?.data?.error || "Erreur de suppression");
         }
     };
 
@@ -266,6 +460,37 @@ export default function ChatPage({ chatContext, onNavigate }) {
         return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
     };
 
+    const renderQuotePreview = (msg) => {
+        if (!msg.reponse_a_contenu && msg.reponse_a_type !== 'AUDIO') return null;
+        return (
+            <div className="wa-quote">
+                <span className="wa-quote-author">{msg.reponse_a_prenom || 'Contact'}</span>
+                {msg.reponse_a_is_deleted === 1 ? (
+                    <span className="wa-quote-text" style={{ fontStyle: 'italic', color: '#888' }}>🚫 Ce message a été supprimé</span>
+                ) : msg.reponse_a_type === 'AUDIO' ? (
+                    <span className="wa-quote-text">🎤 Message vocal</span>
+                ) : (
+                    <span className="wa-quote-text">{msg.reponse_a_contenu}</span>
+                )}
+            </div>
+        );
+    };
+
+    const renderReactionsComponent = (msg) => {
+        let reactions = msg.reactions;
+        if (typeof reactions === 'string') {
+            try { reactions = JSON.parse(reactions); } catch(e) { reactions = {}; }
+        }
+        if (!reactions || Object.keys(reactions).length === 0) return null;
+        
+        const emojis = Object.values(reactions);
+        return (
+            <div className="wa-reactions-pill">
+                {emojis.map((emoji, idx) => <span key={idx} className="react-emoji">{emoji}</span>)}
+            </div>
+        );
+    };
+
     // Grouper messages par date
     const groupedMessages = messages.reduce((acc, msg) => {
         const dateLabel = formatDateObj(msg.date_heure);
@@ -357,18 +582,75 @@ export default function ChatPage({ chatContext, onNavigate }) {
                                         const nextMsg = msgs[i + 1];
                                         const isLastInGroup = !nextMsg || nextMsg.expediteur_id !== msg.expediteur_id;
 
+                                        const isDeleted = msg.is_deleted === 1;
+                                        // Modification autorisée pour tous selon votre demande, mais dans la limite de 15 minutes
+                                        const msgDateMs = new Date(msg.date_heure).getTime();
+                                        const canModify = !isDeleted && (msg.type === 'TEXT' || msg.type === 'texte') && (Date.now() - msgDateMs <= 15 * 60 * 1000);
+                                        // L'utilisateur peut supprimer tous les messages de son historique (Soft delete)
+                                        const canDelete = !isDeleted;
+
                                         return (
                                             <div key={msg.id} className={`chat-row ${isMe ? 'row-me' : 'row-other'}`}>
-                                                <div className={`chat-bubble ${isMe ? 'bubble-me' : 'bubble-other'} ${isLastInGroup ? 'last' : ''}`}>
-                                                    {msg.type === 'AUDIO' ? (
-                                                        <AudioMessage src={msg.contenu} />
+                                                <div className={`chat-bubble ${isMe ? 'bubble-me' : 'bubble-other'} ${isLastInGroup ? 'last' : ''} ${msg.type === 'AUDIO' && !isDeleted ? 'audio-bubble' : ''}`}>
+                                                    {isDeleted ? (
+                                                        <p className="bubble-text deleted-msg">🚫 Ce message a été supprimé</p>
                                                     ) : (
-                                                        <p className="bubble-text">{msg.contenu}</p>
+                                                        <>
+                                                            {renderQuotePreview(msg)}
+                                                            
+                                                            {msg.type === 'AUDIO' ? (
+                                                                <AudioMessage 
+                                                                    src={msg.contenu} 
+                                                                    msg={msg} 
+                                                                    isMe={isMe} 
+                                                                    avatarInitial={isMe ? (user.nom_atelier || user.nom).charAt(0).toUpperCase() : (selectedPartner.partner_atelier || selectedPartner.partner_nom || '?').charAt(0).toUpperCase()}
+                                                                    formatTimeOuter={formatTime}
+                                                                />
+                                                            ) : (
+                                                                <>
+                                                                    <p className="bubble-text">
+                                                                        {msg.contenu}
+                                                                        {msg.is_edited === 1 && <span className="edited-flag">(modifié)</span>}
+                                                                    </p>
+                                                                    <span className="bubble-time">
+                                                                        {formatTime(msg.date_heure)}
+                                                                        {isMe && <span className="read-status">{msg.lu ? '✓✓' : '✓'}</span>}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                            
+                                                            <div className="chat-bubble-toggle" onClick={(e) => toggleMenu(e, msg.id)}>
+                                                                <FiChevronDown />
+                                                            </div>
+
+                                                            {activeMenuId === msg.id && (
+                                                                <div className={`wa-context-menu ${isMe ? 'menu-me' : 'menu-other'}`}>
+                                                                    {showEmojiPicker === msg.id ? (
+                                                                        <div className="wa-emoji-picker">
+                                                                            <div className="emoji-row">
+                                                                                {EMOJIS.map(em => (
+                                                                                    <button key={em} onClick={(e) => { e.stopPropagation(); handleReaction(msg.id, em); }} className="emoji-btn">{em}</button>
+                                                                                ))}
+                                                                            </div>
+                                                                            {msg.reactions && msg.reactions[user.id] && (
+                                                                                <button className="remove-react-btn" onClick={(e) => { e.stopPropagation(); handleReaction(msg.id, null); }}><FiX/> Retirer ma réaction</button>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="wa-menu-items">
+                                                                            <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(msg.contenu); setActiveMenuId(null); }}><FiCopy size={16}/> Copier</button>
+                                                                            <button onClick={(e) => { e.stopPropagation(); startReply(msg); }}><FiCornerUpLeft size={16}/> Répondre</button>
+                                                                            <button onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(msg.id); }}><FiSmile size={16}/> Réagir</button>
+                                                                            {canModify && <button onClick={(e) => { e.stopPropagation(); startEditMessage(msg); }}><FiEdit2 size={16}/> Modifier</button>}
+                                                                            {canDelete && <button className="menu-btn-danger" onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id); }}><FiTrash2 size={16}/> Supprimer</button>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {renderReactionsComponent(msg)}
+                                                        </>
                                                     )}
-                                                    <span className="bubble-time">
-                                                        {formatTime(msg.date_heure)}
-                                                        {isMe && <span className="read-status">{msg.lu ? '✓✓' : '✓'}</span>}
-                                                    </span>
                                                 </div>
                                             </div>
                                         );
@@ -394,25 +676,46 @@ export default function ChatPage({ chatContext, onNavigate }) {
                                     </button>
                                 </div>
                             ) : (
-                                <form onSubmit={sendMessage} className="chat-input-form">
-                                    <input
-                                        type="text"
-                                        ref={inputRef}
-                                        value={input}
-                                        onChange={e => setInput(e.target.value)}
-                                        placeholder="Écrivez un message..."
-                                        className="chat-input-field"
-                                    />
-                                    {input.trim() ? (
-                                        <button type="submit" className="chat-send-btn">
-                                            <FiSend size={18} color="#fff" />
-                                        </button>
-                                    ) : (
-                                        <button type="button" className="chat-mic-btn" onClick={startRecording}>
-                                            <FiMic size={20} color="#fff" />
-                                        </button>
+                                <>
+                                    {replyingTo && (
+                                        <div className="edit-mode-banner reply-banner">
+                                            <div className="reply-preview-content">
+                                                <span className="reply-title">Réponse à {replyingTo.expediteur_id === user.id ? 'vous-même' : 'Contact'}</span>
+                                                <span className="reply-preview-text">{replyingTo.type === 'AUDIO' ? '🎤 Vocal' : replyingTo.contenu}</span>
+                                            </div>
+                                            <button type="button" onClick={cancelReplyMode} title="Annuler">
+                                                <FiX size={16} />
+                                            </button>
+                                        </div>
                                     )}
-                                </form>
+                                    {editModeId && (
+                                        <div className="edit-mode-banner">
+                                            <span>✏️ Modification du message en cours...</span>
+                                            <button type="button" onClick={cancelEditMode} title="Annuler">
+                                                <FiX size={16} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <form onSubmit={sendMessage} className="chat-input-form">
+                                        <input
+                                            type="text"
+                                            ref={inputRef}
+                                            value={input}
+                                            onChange={e => setInput(e.target.value)}
+                                            placeholder={editModeId ? "Modifiez votre message..." : "Écrivez un message..."}
+                                            className="chat-input-field"
+                                        />
+                                        {input.trim() ? (
+                                            <button type="submit" className="chat-send-btn">
+                                                <FiSend size={18} color="#fff" />
+                                            </button>
+                                        ) : (
+                                            <button type="button" className="chat-mic-btn" onClick={startRecording}>
+                                                <FiMic size={20} color="#fff" />
+                                            </button>
+                                        )}
+                                    </form>
+                                </>
                             )}
                         </div>
                     </>

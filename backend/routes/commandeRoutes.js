@@ -97,6 +97,13 @@ router.get('/:id', async (req, res) => {
         // Escrow (paiement + versements + preuves)
         commande.escrow = await getEscrowStatus(commande.id);
 
+        // Avis existant ?
+        const [avisRows] = await pool.query(
+            'SELECT id, note, commentaire, date_avis FROM avis WHERE commande_id = ?',
+            [commande.id]
+        );
+        commande.avis = avisRows.length > 0 ? avisRows[0] : null;
+
         // Peut annuler ?
         commande.peut_annuler = await peutAnnuler(commande.id);
 
@@ -110,23 +117,39 @@ router.get('/:id', async (req, res) => {
 // POST /api/commandes — Créer une commande
 router.post('/', async (req, res) => {
     try {
-        const { client_id, tailleur_id, modele_id, mesures_utilisees, tissu_choisi, couleur, prix_total, date_livraison_souhaitee, notes_client } = req.body;
+        const { client_id, tailleur_id, modele_id, mesures_utilisees, tissu_option, couleur, date_livraison_souhaitee, notes_client } = req.body;
+
+        // Récupérer le modèle pour calculer le prix côté serveur
+        const [modeles] = await pool.query('SELECT prix_base, tissu_disponible, prix_tissu FROM modele WHERE id = ?', [modele_id]);
+        if (modeles.length === 0) return res.status(404).json({ error: 'Modèle introuvable' });
+
+        const modele = modeles[0];
+        let prix_total = parseFloat(modele.prix_base);
+
+        // Si le client veut le tissu du tailleur, vérifier qu'il est disponible et ajouter le prix
+        const choixTissu = tissu_option || 'client_fournit';
+        if (choixTissu === 'tailleur_fournit') {
+            if (!modele.tissu_disponible || !modele.prix_tissu) {
+                return res.status(400).json({ error: 'Le tailleur ne fournit pas de tissu pour ce modèle' });
+            }
+            prix_total += parseFloat(modele.prix_tissu);
+        }
 
         const [result] = await pool.query(`
             INSERT INTO commande 
-            (client_id, tailleur_id, modele_id, mesures_utilisees, tissu_choisi, couleur, prix_total, date_livraison_souhaitee, notes_client) 
+            (client_id, tailleur_id, modele_id, mesures_utilisees, tissu_option, couleur, prix_total, date_livraison_souhaitee, notes_client) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             client_id, tailleur_id, modele_id,
             JSON.stringify(mesures_utilisees || {}),
-            tissu_choisi, couleur, prix_total,
+            choixTissu, couleur, prix_total,
             date_livraison_souhaitee || null,
             notes_client || null
         ]);
 
         await pool.query('INSERT INTO statut_commande (commande_id, libelle) VALUES (?, ?)', [result.insertId, 'en_attente_acceptation']);
 
-        res.status(201).json({ id: result.insertId, message: 'Commande créée' });
+        res.status(201).json({ id: result.insertId, message: 'Commande créée', prix_total });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erreur serveur' });

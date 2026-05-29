@@ -273,6 +273,186 @@
     word-break: break-word;
 }
 
+/* Actions de survol : Chevron WhatsApp */
+.chat-bubble-toggle {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    color: rgba(0,0,0,0.4);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+    background: radial-gradient(circle, rgba(255,255,255,0.7) 40%, transparent 80%);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.chat-bubble:hover .chat-bubble-toggle {
+    opacity: 1;
+}
+.chat-bubble-toggle:hover {
+    background: rgba(255,255,255,0.9);
+}
+
+/* Menu Contextuel WhatsApp */
+.wa-context-menu {
+    position: absolute;
+    top: 30px;
+    right: 0;
+    background: #232d36;
+    color: #e9edef;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 100;
+    min-width: 180px;
+    font-size: 14px;
+    overflow: hidden;
+}
+.menu-other {
+    right: auto;
+    left: 0;
+}
+
+.wa-emoji-picker {
+    background: #111b21;
+    padding: 8px;
+    border-bottom: 1px solid #2a3942;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 250px;
+}
+.emoji-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    justify-content: center;
+}
+.emoji-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    padding: 4px;
+}
+.emoji-btn:hover {
+    transform: scale(1.2);
+}
+.remove-react-btn {
+    background: rgba(255,0,0,0.1);
+    color: #f15c6d;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.remove-react-btn:hover {
+    background: rgba(255,0,0,0.2);
+}
+
+.wa-menu-items button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    color: #e9edef;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 14px;
+}
+.wa-menu-items button:hover {
+    background: #182229;
+}
+.menu-btn-danger {
+    color: #f15c6d !important;
+}
+
+/* Styles Citation & Réactions */
+.wa-quote {
+    background: rgba(0,0,0,0.05);
+    border-left: 4px solid var(--color-accent-caramel);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.wa-quote-author {
+    font-weight: 700;
+    color: var(--color-accent-choco);
+}
+.wa-quote-text {
+    color: rgba(0,0,0,0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.row-other .wa-quote {
+    border-left-color: #007bff;
+}
+.row-other .wa-quote-author {
+    color: #007bff;
+}
+
+.wa-reactions-pill {
+    position: absolute;
+    bottom: 0;
+    transform: translateY(50%);
+    background: #fff;
+    border: 2px solid #f6f3ef; /* Couleur de fond Fitmod pour découper la bulle */
+    padding: 2px 6px;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    font-size: 15px;
+    display: flex;
+    gap: 4px;
+    z-index: 5;
+}
+.row-other .wa-reactions-pill {
+    right: -10px;
+    left: auto;
+}
+.row-me .wa-reactions-pill {
+    right: 15px;
+}
+.chat-row:has(.wa-reactions-pill) {
+    margin-bottom: 20px;
+}
+
+.deleted-msg {
+    font-style: italic;
+    color: rgba(0,0,0,0.5) !important;
+}
+.row-other .deleted-msg {
+    color: rgba(0,0,0,0.4) !important;
+}
+
+.edited-flag {
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(139, 94, 60, 0.6);
+    margin-left: 4px;
+}
+.row-other .edited-flag {
+    color: rgba(0,0,0,0.4);
+}
+
 .bubble-time {
     display: flex;
     justify-content: flex-end;
@@ -288,16 +468,221 @@
     font-weight: bold;
 }
 
-/* Lecteur audio */
-.chat-audio {
-    height: 36px;
-    width: 250px;
-    outline: none;
-    border-radius: 18px;
+/* ─── LECTEUR AUDIO WHATSAPP-STYLE (AVATAR & WAVEFORM) ─── */
+.audio-bubble {
+    padding: 6px 4px 18px 10px; /* Increased bottom padding to fit absolute meta text */
+    min-width: 300px;
+}
+.audio-bubble .bubble-time {
+    display: none; /* Time is handled inside the wa-audio-player */
 }
 
-.chat-audio::-webkit-media-controls-enclosure {
-    background: transparent;
+.wa-audio-player {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+.wa-audio-player audio {
+    display: none;
+}
+
+.wa-play-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-accent-choco);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+}
+.wa-play-btn:active {
+    transform: scale(0.9);
+}
+.wa-other .wa-play-btn {
+    color: var(--color-text-main);
+}
+
+.wa-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative; /* the anchor for absolute meta */
+}
+
+.wa-waveform-container {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.wa-waveform {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+}
+
+.wa-wave-bar {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    min-width: 2px;
+    transition: background-color 0.1s;
+}
+
+.wa-wave-bar.passed {
+    background: var(--color-accent-choco);
+}
+.wa-other .wa-wave-bar.passed {
+    background: #007bff; /* Bleu WhatsApp pour l'autre */
+}
+
+.wa-progress-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--color-accent-choco);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: left 0.1s linear;
+    pointer-events: none;
+}
+.wa-other .wa-progress-thumb {
+    background: #007bff;
+}
+
+.wa-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(139, 94, 60, 0.6);
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    width: 100%;
+}
+.wa-other .wa-meta {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.wa-time-left {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.wa-timestamp {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.wa-read-status {
+    color: var(--color-accent-caramel);
+    font-weight: bold;
+    font-size: 12px;
+}
+.wa-other .wa-read-status {
+    color: #007bff;
+}
+
+.wa-avatar-container {
+    position: relative;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+.wa-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(212, 167, 106, 0.8), rgba(198, 139, 89, 0.8));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+}
+.wa-other .wa-avatar {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.5), rgba(0, 123, 255, 0.8));
+}
+.wa-mic-icon {
+    position: absolute;
+    bottom: -2px;
+    left: -4px;
+    background: #4caf50; /* Green mic */
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+.wa-mic-icon.active {
+    background: #007bff; /* Bleu en lecture */
+}
+.bubble-other .wa-mic-icon {
+    border-color: #fff; /* s'adapte au fond de la bulle */
+}
+.bubble-me .wa-mic-icon {
+    border-color: var(--color-accent-cream); /* background of bubble-me */
+}
+
+/* ─── Bannière de modification & Réponse ─── */
+.edit-mode-banner {
+    background: rgba(139, 94, 60, 0.1);
+    color: var(--color-accent-choco);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px 12px 0 0;
+    margin: -16px -8% 12px -8%;
+    border-bottom: 1px solid rgba(139, 94, 60, 0.2);
+}
+.reply-banner {
+    background: rgba(0, 0, 0, 0.05);
+    border-left: 5px solid var(--color-accent-caramel);
+}
+.reply-preview-content {
+    display: flex;
+    flex-direction: column;
+}
+.reply-title {
+    font-weight: 700;
+    font-size: 12px;
+}
+.reply-preview-text {
+    font-weight: 400;
+    opacity: 0.8;
+}
+.edit-mode-banner button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-accent-choco);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+.edit-mode-banner button:hover {
+    background: rgba(0,0,0,0.1);
+    border-radius: 50%;
 }
 
 /* ─── FOOTER (Input) ─── */

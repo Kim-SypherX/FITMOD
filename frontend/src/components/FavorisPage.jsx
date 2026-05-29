@@ -16,7 +16,7 @@ export default function FavorisPage({ onNavigate }) {
     const [avisForm, setAvisForm] = useState({ commande_id: null, note: 5, commentaire: '' });
 
     useEffect(() => {
-        if ((user?.type_compte === 'client' || user?.type_compte === 'tailleur') && user?.client?.id) {
+        if (user && (user.type_compte === 'client' || user.type_compte === 'tailleur')) {
             loadFavoris();
             loadCommandesSansAvis();
         } else {
@@ -26,7 +26,8 @@ export default function FavorisPage({ onNavigate }) {
 
     const loadFavoris = async () => {
         try {
-            const data = await api.get(`/client-profil/${user.client.id}/favoris`);
+            const clientId = user.client?.id || user.id;
+            const data = await api.get(`/client-profil/${clientId}/favoris`);
             setFavoris(data);
         } catch (err) {
             console.error(err);
@@ -37,7 +38,8 @@ export default function FavorisPage({ onNavigate }) {
 
     const removeFavori = async (modeleId) => {
         try {
-            await api.delete(`/client-profil/${user.client.id}/favoris/${modeleId}`);
+            const clientId = user.client?.id || user.id;
+            await api.delete(`/client-profil/${clientId}/favoris/${modeleId}`);
             loadFavoris();
         } catch (err) {
             console.error(err);
@@ -46,12 +48,20 @@ export default function FavorisPage({ onNavigate }) {
 
     const loadCommandesSansAvis = async () => {
         try {
-            const data = await api.get(`/commandes/client/${user.client.id}`);
-            // Filtrer livre + sans avis
-            // Ce endpoint renvoie peut être tout, filtrons côté frontend :
-            // Actuellement l'API ne dit pas si l'avis est laissé, on peut simplifier en affichant toutes les "livrees"
+            const clientId = user.client?.id || user.id;
+            const data = await api.get(`/commandes/client/${clientId}`);
+            // Filtrer livré + sans avis (on vérifie via le détail de chaque commande)
             const livrees = data.filter(c => c.statut === 'livre');
-            setCommandesTerminees(livrees);
+            
+            // Pour chaque commande livrée, vérifier si un avis existe déjà
+            const sansAvis = [];
+            for (const cmd of livrees) {
+                try {
+                    const detail = await api.get(`/commandes/${cmd.id}`);
+                    if (!detail.avis) sansAvis.push(cmd);
+                } catch { sansAvis.push(cmd); }
+            }
+            setCommandesTerminees(sansAvis);
         } catch (err) {
             console.error(err);
         }
@@ -63,9 +73,10 @@ export default function FavorisPage({ onNavigate }) {
             const cmd = commandesTerminees.find(c => c.id === Number(avisForm.commande_id));
             if (!cmd) return;
 
-            await api.post('/tailleurs/avis', {
+            const clientId = user.client?.id || user.id;
+            await api.post('/client-profil/avis', {
                 tailleur_id: cmd.tailleur_id,
-                client_id: user.client.id,
+                client_id: clientId,
                 commande_id: cmd.id,
                 note: avisForm.note,
                 commentaire: avisForm.commentaire
@@ -73,7 +84,7 @@ export default function FavorisPage({ onNavigate }) {
 
             alert('Avis publié avec succès !');
             setAvisForm({ commande_id: null, note: 5, commentaire: '' });
-            // optionnel: remove from list
+            loadCommandesSansAvis();
         } catch (err) {
             alert("Erreur: " + err.message);
         }
