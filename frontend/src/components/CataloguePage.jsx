@@ -283,7 +283,7 @@ export default function CataloguePage({ onNavigate, initialContext, onRequireAut
                                     <FiMessageSquare /> Contacter le tailleur
                                 </button>
                                 {(t.latitude && t.longitude) && (
-                                    <button className="action-btn ghost" onClick={() => window.open(`https://www.google.com/maps?q=${t.latitude},${t.longitude}`, '_blank')}>
+                                    <button className="action-btn ghost" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${t.latitude},${t.longitude}`, '_blank')}>
                                         🗺️ Ouvrir dans Google Maps
                                     </button>
                                 )}
@@ -293,13 +293,42 @@ export default function CataloguePage({ onNavigate, initialContext, onRequireAut
                         {/* Map Preview Section */}
                         {(t.latitude && t.longitude) && (
                             <div style={{ marginTop: '24px', borderRadius: '16px', overflow: 'hidden', border: '3px solid var(--color-border)', boxShadow: '4px 4px 0px rgba(139,94,60,0.1)' }}>
-                                <MapContainer center={[t.latitude, t.longitude]} zoom={15} style={{ height: '250px', width: '100%', zIndex: 1 }}>
+                                <MapContainer center={[Number(t.latitude), Number(t.longitude)]} zoom={15} style={{ height: '250px', width: '100%', zIndex: 1 }}>
                                     <TileLayer
                                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         attribution="&copy; OpenStreetMap contributors"
                                     />
-                                    <Marker position={[t.latitude, t.longitude]}>
-                                        <Popup>Atelier de {t.nom_atelier}</Popup>
+                                    <Marker position={[Number(t.latitude), Number(t.longitude)]} icon={
+                                        new L.divIcon({
+                                            className: 'custom-halo-marker',
+                                            html: `
+                                                <div class="halo-marker-container">
+                                                    <div class="halo-marker-glow"></div>
+                                                    <div class="halo-marker-dot">🏬</div>
+                                                </div>
+                                            `,
+                                            iconSize: [40, 40],
+                                            iconAnchor: [20, 20],
+                                            popupAnchor: [0, -20]
+                                        })
+                                    }>
+                                        <Popup className="custom-gps-popup">
+                                            <div className="popup-tracking-id">
+                                                <span>🏬</span> TLR-{t.id.toString().padStart(4, '0')}-FIT — Tailleur
+                                            </div>
+                                            <div className="popup-location-title">
+                                                <span style={{ color: '#ef4444' }}>📍</span> Atelier de {t.nom_atelier}
+                                            </div>
+                                            <div className="popup-meta">
+                                                <span>👤</span> Prénom: {t.prenom} {t.nom}
+                                            </div>
+                                            <div className="popup-meta">
+                                                <span>🕒</span> Ajouté ou mis à jour en {new Date().getFullYear()}
+                                            </div>
+                                            <div className="popup-meta" style={{ marginTop: '8px', color: '#9ca3af', fontFamily: 'monospace', fontSize: '10px' }}>
+                                                GPS: {Number(t.latitude).toFixed(5)}, {Number(t.longitude).toFixed(5)}
+                                            </div>
+                                        </Popup>
                                     </Marker>
                                 </MapContainer>
                             </div>

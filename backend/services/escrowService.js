@@ -166,7 +166,7 @@ async function getEscrowStatus(commandeId) {
 
     // Preuves
     const [preuves] = await pool.query(
-        `SELECT etape, photo_url, commentaire, date_upload
+        `SELECT id, etape, photo_url, commentaire, date_upload, client_valide
          FROM preuve_etape WHERE commande_id = ? ORDER BY date_upload ASC`,
         [commandeId]
     );

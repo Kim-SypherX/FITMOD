@@ -470,8 +470,31 @@ function ProfilTab({ tailleurData, tailleurId, onUpdate }) {
                                     attribution="&copy; OpenStreetMap contributors"
                                 />
                                 <LocationClickPicker />
-                                <Marker position={mapCenter}>
-                                    <Popup>Position de votre atelier pour les clients.</Popup>
+                                <Marker position={mapCenter} icon={
+                                        new L.divIcon({
+                                            className: 'custom-halo-marker',
+                                            html: `
+                                                <div class="halo-marker-container">
+                                                    <div class="halo-marker-glow"></div>
+                                                    <div class="halo-marker-dot">🏬</div>
+                                                </div>
+                                            `,
+                                            iconSize: [40, 40],
+                                            iconAnchor: [20, 20],
+                                            popupAnchor: [0, -20]
+                                        })
+                                }>
+                                    <Popup className="custom-gps-popup">
+                                            <div className="popup-tracking-id">
+                                                <span>🏬</span> VOTRE ATELIER
+                                            </div>
+                                            <div className="popup-location-title">
+                                                <span style={{ color: '#ef4444' }}>📍</span> Affiché aux clients FITMOD
+                                            </div>
+                                            <div className="popup-meta" style={{ marginTop: '8px', color: '#9ca3af', fontFamily: 'monospace', fontSize: '10px' }}>
+                                                GPS: {Number(mapCenter[0]).toFixed(5)}, {Number(mapCenter[1]).toFixed(5)}
+                                            </div>
+                                    </Popup>
                                 </Marker>
                             </MapContainer>
                         </div>

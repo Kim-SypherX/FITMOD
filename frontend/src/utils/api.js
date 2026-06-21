@@ -46,5 +46,5 @@ export default {
     put: (endpoint, body) => fetchApi(endpoint, { method: 'PUT', body }),
     patch: (endpoint, body) => fetchApi(endpoint, { method: 'PATCH', body }),
     delete: (endpoint) => fetchApi(endpoint, { method: 'DELETE' }),
-    getUploadUrl: (path) => path ? `http://localhost:3001${path}` : ''
+    getUploadUrl: (path) => path ? `http://localhost:3001${path.startsWith('/') ? '' : '/'}${path}` : ''
 };

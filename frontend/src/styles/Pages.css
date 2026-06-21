@@ -1600,3 +1600,97 @@
         font-size: 36px;
     }
 }
+
+/* ═══ Custom Map Design ═══ */
+.halo-marker-container {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.halo-marker-dot {
+    width: 24px;
+    height: 24px;
+    background: #fff;
+    border: 2px solid #3b82f6;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    font-size: 14px;
+}
+
+.halo-marker-glow {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.4);
+    z-index: 1;
+    animation: gpsPulse 2s infinite ease-out;
+}
+
+@keyframes gpsPulse {
+    0% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.custom-gps-popup .leaflet-popup-content-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    padding: 0;
+    overflow: hidden;
+}
+
+.custom-gps-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 14px;
+    font-family: inherit;
+    min-width: 240px;
+}
+
+.custom-gps-popup .leaflet-popup-tip-container {
+    margin-left: -10px;
+}
+
+.custom-gps-popup .leaflet-popup-tip {
+    background: #fff;
+}
+
+.popup-tracking-id {
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.popup-location-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.popup-meta {
+    font-size: 11px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}

@@ -205,11 +205,9 @@ router.patch('/:id/statut', upload.single('preuve'), async (req, res) => {
 
         await pool.query(sql, params);
 
-        // ── Déclencher le versement escrow ──
+        // ── Le versement escrow N'EST PLUS DÉCLENCHÉ ICI ──
+        // L'argent est bloqué jusqu'à ce que le client valide la preuve photo
         let versement = null;
-        if (['couture_en_cours', 'finitions', 'pret_a_recuperer', 'livre'].includes(statut)) {
-            versement = await libererVersement(parseInt(commandeId), statut);
-        }
 
         // ── Notification chat ──
         if (statut === 'acceptee' || statut === 'annulee') {
@@ -225,6 +223,39 @@ router.patch('/:id/statut', upload.single('preuve'), async (req, res) => {
         });
     } catch (err) {
         console.error('[COMMANDE statut]', err);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// POST /api/commandes/:id/valider-etape — Validation client d'une preuve photo
+router.post('/:id/valider-etape', async (req, res) => {
+    try {
+        const { etape, preuve_id, action = 'valider' } = req.body;
+        const commandeId = req.params.id;
+
+        const validationStatus = action === 'rejeter' ? 2 : 1;
+
+        // 1. Mettre à jour la preuve pour la marquer
+        await pool.query(
+            'UPDATE preuve_etape SET client_valide = ? WHERE commande_id = ? AND etape = ? AND id = ?',
+            [validationStatus, commandeId, etape, preuve_id]
+        );
+
+        // 2. Déclencher le versement escrow si validé
+        let versement = null;
+        if (validationStatus === 1 && ['couture_en_cours', 'finitions', 'pret_a_recuperer', 'livre'].includes(etape)) {
+            versement = await libererVersement(parseInt(commandeId), etape);
+        }
+
+        res.json({
+            success: true,
+            versement,
+            message: validationStatus === 1 
+                ? (versement ? `Étape validée ! ${versement.montant} FCFA libérés au tailleur.` : 'Étape validée avec succès.')
+                : 'Preuve rejetée. Le tailleur devra soumettre une nouvelle photo.'
+        });
+    } catch (err) {
+        console.error('[COMMANDE valider-etape]', err);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

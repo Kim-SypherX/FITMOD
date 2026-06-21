@@ -67,7 +67,7 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
     const montant = commande?.prix_total || 0;
     const commandeId = commande?.id;
 
-    // ─── Étape 1 → 2 : Envoyer l'OTP ─────────────────────────
+    // ─── Étape 1 → 2 : Préparer l'OTP ─────────────────────────
     const envoyerOTP = async () => {
         setErreur('');
         if (!telephone || telephone.length < 8) {
@@ -77,6 +77,7 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
 
         setLoading(true);
         try {
+            // On enregistre simplement la tentative en base de données
             const res = await fetch(`${API_BASE}/paiement/initier`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -87,19 +88,15 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
                     operateur,
                 }),
             });
-            const data = await res.json();
-
-            if (!res.ok) {
-                setErreur(data.error || 'Erreur lors de l\'envoi de l\'OTP');
-                return;
-            }
-
+            
+            // On s'en fiche un peu du retour strict si on bascule en mode straight payin,
+            // mais l'appel logge le numéro en BDD.
             setEtape(2);
             setTimer(OTP_TIMER);
             setTimerActif(true);
             setTimeout(() => otpRefs.current[0]?.focus(), 300);
         } catch {
-            setErreur('Impossible de contacter le serveur de paiement');
+            setErreur('Impossible de contacter le serveur');
         } finally {
             setLoading(false);
         }
@@ -130,6 +127,8 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
         }
     };
 
+    const [enAttente, setEnAttente] = useState(false);
+
     // ─── Étape 2 → 3 : Valider l'OTP ─────────────────────────
     const validerPaiement = async () => {
         const otpCode = otp.join('');
@@ -140,6 +139,8 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
 
         setErreur('');
         setLoading(true);
+        setEnAttente(false);
+        
         try {
             const res = await fetch(`${API_BASE}/paiement/valider`, {
                 method: 'POST',
@@ -159,15 +160,22 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
 
             if (res.ok && data.success) {
                 setSucces(true);
+                setEnAttente(false);
                 setTransactionId(data.transaction_id || '');
                 onSuccess?.({ transaction_id: data.transaction_id, commande_id: commandeId });
+            } else if (data.pending) {
+                setSucces(false);
+                setEnAttente(true);
+                setErreur(data.message || 'Paiement en attente de confirmation opérateur.');
             } else {
                 setSucces(false);
+                setEnAttente(false);
                 setErreur(data.message || 'Paiement refusé. Vérifiez votre OTP et votre solde.');
             }
         } catch {
             setEtape(3);
             setSucces(false);
+            setEnAttente(false);
             setErreur('Erreur de connexion. Réessayez.');
         } finally {
             setLoading(false);
@@ -275,8 +283,27 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
                     <div className="pm-body">
                         <div className="pm-otp-header">
                             <div className="pm-otp-icon">📱</div>
-                            <p>Code envoyé au <strong>+226 {telephone}</strong></p>
-                            <p className="pm-otp-hint">Saisissez le code à 6 chiffres reçu par SMS</p>
+                            <p>Générez votre code OTP depuis le <strong>+226 {telephone}</strong></p>
+                            <div className="pm-otp-ussd" style={{
+                                marginTop: 10,
+                                marginBottom: 10,
+                                padding: '10px',
+                                background: operateur === 'orange' ? '#FFF3E8' : '#EEF2FF',
+                                borderRadius: '8px',
+                                border: `1px dashed ${operateur === 'orange' ? '#FF6600' : '#2563EB'}`
+                            }}>
+                                {operateur === 'orange' ? (
+                                    <>
+                                        <p style={{ margin: 0, fontSize: '13px', color: '#555' }}>Pour Orange Money, composez le :</p>
+                                        <p style={{ margin: '4px 0 0', fontWeight: 'bold', fontSize: '18px', color: '#FF6600' }}>*144*4*6*{montant}#</p>
+                                    </>
+                                ) : (
+                                    <p style={{ margin: 0, fontSize: '13px', color: '#2563EB', fontWeight: 'bold' }}>
+                                        Générez un code de paiement depuis votre application ou via l'USSD de votre opérateur.
+                                    </p>
+                                )}
+                            </div>
+                            <p className="pm-otp-hint">Puis saisissez le code à 6 chiffres généré ci-dessous :</p>
                         </div>
 
                         {/* Champs OTP */}
@@ -343,6 +370,21 @@ export default function PaiementModal({ commande, onClose, onSuccess }) {
                                 )}
                                 <button className="pm-btn-primary" onClick={onClose}>
                                     <FiCheck /> Voir ma commande
+                                </button>
+                            </>
+                        ) : enAttente ? (
+                            <>
+                                <div className="pm-success-anim" style={{ color: '#F59E0B' }}>
+                                    <div className="pm-success-circle" style={{ background: '#FEF3C7', color: '#F59E0B' }}>
+                                        <FiClock />
+                                    </div>
+                                </div>
+                                <h3 className="pm-result-title" style={{ color: '#F59E0B' }}>En attente de l'opérateur</h3>
+                                <p className="pm-result-desc" style={{ color: '#92400e' }}>
+                                    {erreur || 'Votre paiement est en cours de validation par votre opérateur Mobile. Le statut de votre commande se mettra à jour automatiquement d\'ici quelques secondes.'}
+                                </p>
+                                <button className="pm-btn-primary" onClick={onClose} style={{ background: '#F59E0B' }}>
+                                    J'ai compris
                                 </button>
                             </>
                         ) : (

@@ -104,15 +104,8 @@ router.post('/initier', async (req, res) => {
       ? telephone
       : `226${telephone.replace(/^0+/, '')}`;
 
-    // Appel LigdiCash — envoi OTP
-    const ligdiRes = await ligdiRequest(
-      'GET',
-      `/pay/v02/debitotp/${phoneFormatted}/${montant}`
-    );
-
-    if (ligdiRes.error === true) {
-      return res.status(502).json({ error: 'Erreur LigdiCash', details: ligdiRes.message });
-    }
+    // Appel LigdiCash retiré car pour le Mobile Money (Orange/Moov), 
+    // c'est le client qui génère l'OTP via USSD sans requête serveur préalable.
 
     // Créer/mettre à jour l'entrée paiement en BDD
     const [existing] = await pool.query(
@@ -216,7 +209,7 @@ router.post('/valider', async (req, res) => {
       },
     };
 
-    const ligdiRes = await ligdiRequest('POST', '/pay/v02/debitwallet/withotp', ligdiPayload);
+    const ligdiRes = await ligdiRequest('POST', '/pay/v01/straight/checkout-invoice/create', ligdiPayload);
 
     if (ligdiRes.response_code !== '00') {
       // Échec
@@ -235,10 +228,19 @@ router.post('/valider', async (req, res) => {
     let statusData = { status: 'completed', transaction_id: ligdiRes.token }; // par défaut sandbox
 
     if (!IS_SANDBOX) {
-      statusData = await ligdiRequest(
-        'GET',
-        `/pay/v01/redirect/checkout-invoice/confirm/?invoiceToken=${token}`
-      );
+      statusData = { status: 'pending' };
+      // Polling: vérifier jusqu'à 8 fois (environ 16 secondes d'attente max)
+      for (let i = 0; i < 8; i++) {
+        const check = await ligdiRequest(
+          'GET',
+          `/pay/v01/redirect/checkout-invoice/confirm/?invoiceToken=${token}`
+        );
+        if (check.status === 'completed' || check.status === 'failed') {
+          statusData = check;
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
     if (statusData.response_code === '00' && statusData.status === 'completed') {

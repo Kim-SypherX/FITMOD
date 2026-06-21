@@ -7,6 +7,7 @@
  * - Historique des versements
  */
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api, { fetchApi } from '../utils/api';
 import PaiementModal from './PaiementModal';
@@ -147,6 +148,26 @@ export default function CommandePage({ commandeContext, onNavigate }) {
             setUploadingStatut(null);
             loadDetails(selectedCmd.id);
         } catch (err) { showToast(err.message, 'error'); }
+    };
+
+    const [validatingEtape, setValidatingEtape] = useState(null);
+    const [zoomedImage, setZoomedImage] = useState(null);
+
+    const validerEtape = async (etape, preuve_id, action = 'valider') => {
+        setValidatingEtape(preuve_id);
+        try {
+            const res = await api.post(`/commandes/${selectedCmd.id}/valider-etape`, {
+                etape,
+                preuve_id,
+                action
+            });
+            showToast(res.message || "Opération réussie !", "success");
+            loadDetails(selectedCmd.id);
+        } catch (err) {
+            showToast(err.message || 'Erreur lors de la validation', 'error');
+        } finally {
+            setValidatingEtape(null);
+        }
     };
 
     const handleFileSelect = (e) => {
@@ -481,12 +502,49 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                                     {preuve && (
                                         <div style={{ marginTop: 4 }}>
                                             <img src={api.getUploadUrl(preuve.photo_url)} alt="Preuve"
-                                                style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', cursor: 'pointer' }}
-                                                onClick={() => window.open(api.getUploadUrl(preuve.photo_url), '_blank')}
+                                                style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', cursor: 'zoom-in' }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log("Zooming image:", api.getUploadUrl(preuve.photo_url));
+                                                    setZoomedImage(api.getUploadUrl(preuve.photo_url));
+                                                }}
                                             />
                                             {preuve.commentaire && (
                                                 <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
                                                     {preuve.commentaire}
+                                                </div>
+                                            )}
+                                            {!isTailleur && preuve.client_valide === 0 && ['couture_en_cours', 'finitions', 'pret_a_recuperer', 'livre'].includes(preuve.etape) && (
+                                                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                                    <button
+                                                        style={{ padding: '6px 12px', fontSize: 12, background: '#10b981', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                        onClick={() => validerEtape(preuve.etape, preuve.id, 'valider')}
+                                                        disabled={validatingEtape === preuve.id}
+                                                    >
+                                                        {validatingEtape === preuve.id ? '⏳' : '✅'} Valider
+                                                    </button>
+                                                    <button
+                                                        style={{ padding: '6px 12px', fontSize: 12, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid currentColor', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                        onClick={() => { if(window.confirm('Refuser cette preuve de travail ?')) validerEtape(preuve.etape, preuve.id, 'rejeter'); }}
+                                                        disabled={validatingEtape === preuve.id}
+                                                    >
+                                                        ❌ Rejeter
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {isTailleur && preuve.client_valide === 0 && ['couture_en_cours', 'finitions', 'pret_a_recuperer', 'livre'].includes(preuve.etape) && (
+                                                <div style={{ marginTop: 8, padding: '8px', fontSize: 11, background: 'rgba(245,158,11,0.1)', color: '#b45309', borderRadius: 6, fontWeight: 'bold' }}>
+                                                    ⏳ En attente de la validation du client
+                                                </div>
+                                            )}
+                                            {preuve.client_valide === 1 && (
+                                                <div style={{ marginTop: 4, fontSize: 11, color: '#10b981', fontWeight: 'bold' }}>
+                                                    ✅ Travail validé par le client
+                                                </div>
+                                            )}
+                                            {preuve.client_valide === 2 && (
+                                                <div style={{ marginTop: 4, fontSize: 11, color: '#ef4444', fontWeight: 'bold' }}>
+                                                    ❌ Preuve rejetée par le client
                                                 </div>
                                             )}
                                         </div>
@@ -726,6 +784,25 @@ export default function CommandePage({ commandeContext, onNavigate }) {
                         onSuccess={() => { setPaiementCmd(null); loadDetails(c.id); }}
                     />
                 )}
+            {zoomedImage && createPortal(
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 999999,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20
+                }} onClick={() => setZoomedImage(null)}>
+                    <button style={{
+                        position: 'absolute', top: 20, right: 20,
+                        background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                        width: 40, height: 40, borderRadius: '50%', fontSize: 24, cursor: 'pointer',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center'
+                    }} onClick={() => setZoomedImage(null)}>×</button>
+                    <img src={zoomedImage} alt="Zoomed Preuve" style={{
+                        maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8,
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                    }} onClick={e => e.stopPropagation()} />
+                </div>,
+                document.body
+            )}
             </div>
         );
     }
